@@ -78,7 +78,15 @@ Object.assign(I18N.th, {
   completeLinkSub: 'พิมพ์อีเมลเดิมอีกครั้งเพื่อเข้าสู่ระบบให้เสร็จ',
   completeLinkBtn: 'เข้าสู่ระบบ',
   authError: 'เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้งนะ',
-  invalidEmail: 'พิมพ์อีเมลให้ถูกต้องก่อนนะ'
+  invalidEmail: 'พิมพ์อีเมลให้ถูกต้องก่อนนะ',
+  loginTag: 'ติวสอบตำรวจ สายอำนวยการ — เรียน เล่น และเก็บความก้าวหน้าไว้ได้ทุกเครื่อง',
+  loginGoogle: 'ดำเนินการต่อด้วย Google',
+  loginOr: 'หรือ',
+  loginEmailBtn: 'เข้าด้วยอีเมล',
+  loginSendLink: 'ส่งลิงก์เข้าสู่ระบบ',
+  loginSkip: 'ดำเนินการต่อโดยไม่ต้องเข้าสู่ระบบ',
+  loginNote: 'เข้าสู่ระบบเพื่อสำรองความก้าวหน้า — เปลี่ยนมือถือเมื่อไหร่ก็เรียนต่อได้เลย',
+  loginWait: 'กำลังเข้าสู่ระบบ…'
 });
 Object.assign(I18N.en, {
   continuePath: 'Start lesson',
@@ -158,7 +166,15 @@ Object.assign(I18N.en, {
   completeLinkSub: 'Enter the same email again to finish signing in',
   completeLinkBtn: 'Sign in',
   authError: 'Sign-in failed — please try again',
-  invalidEmail: 'Please enter a valid email first'
+  invalidEmail: 'Please enter a valid email first',
+  loginTag: 'Thai Police Exam Prep · Administration Line — learn, play, and keep your progress on every device',
+  loginGoogle: 'Continue with Google',
+  loginOr: 'or',
+  loginEmailBtn: 'Sign in with email',
+  loginSendLink: 'Send sign-in link',
+  loginSkip: 'Continue without an account',
+  loginNote: 'Sign in to back up your progress — switch phones anytime and pick up where you left off',
+  loginWait: 'Signing in…'
 });
 
 function fernAsset(relative) {
@@ -197,6 +213,8 @@ function applyLang() {
   for (const node of document.querySelectorAll('[data-i18n]')) {
     node.textContent = t(node.dataset.i18n);
   }
+  const loginEmail = document.getElementById('login-email');
+  if (loginEmail) loginEmail.placeholder = t('emailPh');
   for (const code of ['th', 'en']) {
     const control = document.getElementById('lang-' + code);
     control.classList.toggle('on', LANG === code);
@@ -677,12 +695,91 @@ function wireAccount() {
   };
 }
 
+// --- Pantalla de inicio de sesión al entrar (v4.5) ---
+// Aparece al abrir la app cuando no hay sesión. loginDismissed es solo de
+// esta sesión: al reabrir la app vuelve a aparecer si sigue sin sesión.
+// Si Firebase no responde (sin red / CDN bloqueada), el respaldo de bootFern
+// la muestra igual a los 5 s; el botón de Google reintenta la conexión.
+let loginDismissed = false;
+let loginAuthResolved = false;
+
+function showLoginIfNeeded() {
+  const scr = document.getElementById('login-screen');
+  if (!scr || loginDismissed) return;
+  const info = window.FernSync ? window.FernSync.getSyncInfo() : { user: null };
+  if (info.user) return;
+  scr.hidden = false;
+  requestAnimationFrame(() => scr.classList.add('on'));
+  document.body.classList.add('login-open');
+}
+
+function hideLogin() {
+  const scr = document.getElementById('login-screen');
+  if (!scr || scr.hidden) return;
+  scr.classList.remove('on');
+  setTimeout(() => { scr.hidden = true; }, 260);
+  document.body.classList.remove('login-open');
+}
+
+function showLoginMsg(text) {
+  const el = document.getElementById('login-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = false;
+}
+
+function wireLogin() {
+  if (!window.FernSync) return;
+  const googleBtn = document.getElementById('login-google');
+  if (googleBtn) googleBtn.onclick = async () => {
+    googleBtn.disabled = true;
+    const label = googleBtn.querySelector('span');
+    if (label) label.textContent = t('loginWait');
+    try {
+      await window.FernSync.signInWithGoogle();
+    } catch (e) {
+      // Cerrar el popup no es un error: no mostrar mensaje.
+      if (!e || e.code !== 'auth/popup-closed-by-user') showLoginMsg(t('authError'));
+    }
+    googleBtn.disabled = false;
+    if (label) label.textContent = t('loginGoogle');
+  };
+  const emailToggle = document.getElementById('login-email-toggle');
+  const emailForm = document.getElementById('login-email-form');
+  if (emailToggle && emailForm) emailToggle.onclick = () => {
+    const opening = emailForm.hidden;
+    emailForm.hidden = !opening;
+    if (opening) {
+      const input = document.getElementById('login-email');
+      if (input) input.focus();
+    }
+  };
+  if (emailForm) emailForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const input = document.getElementById('login-email');
+    const em = input ? input.value.trim() : '';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { showLoginMsg(t('invalidEmail')); return; }
+    try {
+      await window.FernSync.sendEmailLink(em);
+      showLoginMsg(t('linkSent'));
+    } catch (e) { showLoginMsg(t('authError')); }
+  };
+  const skipBtn = document.getElementById('login-skip');
+  if (skipBtn) skipBtn.onclick = () => { loginDismissed = true; hideLogin(); };
+}
+
 // El módulo de Firebase avisa de cambios de sesión y de estado de sync:
 // un cambio de sesión re-dibuja el perfil; un cambio de estado solo actualiza
 // la línea de estado para no borrar el correo que se esté escribiendo.
 window.addEventListener('fern-auth', event => {
   const d = (event && event.detail) || {};
-  if (d.kind === 'auth') { renderProfile(); return; }
+  if (d.kind === 'auth') {
+    loginAuthResolved = true;
+    wireLogin(); // FernSync existe ya seguro (el módulo cargó antes del evento)
+    if (d.user) hideLogin();
+    else showLoginIfNeeded();
+    renderProfile(); return;
+  }
   const el = document.getElementById('acct-status');
   if (el) el.textContent = syncStatusText(d.status);
 });
@@ -885,6 +982,10 @@ function bootFern() {
     document.getElementById(id).innerHTML = mascotArt(size, mood);
   }
   applyLang();
+  wireLogin();
+  // Respaldo: si Firebase no responde (sin red / CDN bloqueada), mostrar el
+  // login igual a los 5 s; el botón de Google reintenta la conexión al tocarlo.
+  setTimeout(() => { wireLogin(); if (!loginAuthResolved) showLoginIfNeeded(); }, 5000);
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
