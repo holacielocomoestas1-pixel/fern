@@ -27,5 +27,9 @@
   });
   sync();
   new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
-  host.prepend(entry);
+  // Las entradas van ANTES del grupo de acciones (hermanas, no dentro):
+  // .home-actions es una tarjeta agrupada de cristal y las entradas son
+  // tarjetas propias que deben destacar fuera de ella (v3.8/v4.0).
+  if (host.classList && host.classList.contains("home-actions")) host.before(entry);
+  else host.prepend(entry);
 })();
