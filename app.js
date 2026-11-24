@@ -74,7 +74,7 @@ function finishQuiz(){document.body.classList.remove('quiz-on');var st=quiz;var 
 /* ===== Extra exercises ===== */
 var ex=null;
 function startExtra(){if(!heartsGate())return;document.body.classList.add('quiz-on');ex={i:0,score:0,list:EXTRA.slice()};go('quiz');document.getElementById('quiz-menu').hidden=true;renderEx();}
-function exHead(){return '<div class="prow"><button class="xbtn" onclick="exitQuiz2()">✕</button><div class="bar blue" style="flex:1"><i style="width:'+Math.round(ex.i/ex.list.length*100)+'%"></i></div><span style="font-weight:800">❤️ '+G.hearts.n+'</span></div>';}
+function exHead(){return '<div class="prow"><button class="xbtn" onclick="exitQuiz2()">✕</button><div class="bar blue" style="flex:1"><i style="width:'+Math.round(ex.i/ex.list.length*100)+'%"></i></div><span style="font-weight:800">❤️ '+'<span class="quiz-hearts-n">'+G.hearts.n+'</span></span></div>';}
 function exitQuiz2(){document.body.classList.remove('quiz-on');ex=null;document.getElementById('quiz-box').innerHTML='';document.getElementById('quiz-menu').hidden=false;}
 function exFeedback(right,e){if(right){ex.score++;addXP(10);}else{G.hearts.n=Math.max(0,G.hearts.n-1);saveG();renderHUD();}return '<div class="feedback '+(right?'ok':'no')+'">'+(right?'🎉 '+t('correct'):'💡 '+(LANG==='en'?'Not quite':'ยังไม่ถูก'))+'<br><span style="font-weight:500">'+esc(e)+'</span></div><button class="btn" style="margin-top:12px" onclick="nextEx()">'+(ex.i+1>=ex.list.length?t('finish'):t('next'))+'</button>';}
 function nextEx(){ex.i++;if(ex.i>=ex.list.length){var sc=ex.score,tt=ex.list.length;exitQuiz2();celebrate(t('extraDone'),t('score')+': <b>'+sc+' / '+tt+'</b>',t('continue'),null);checkBadges(true);return;}renderEx();}
@@ -117,4 +117,4 @@ b.innerHTML='<div class="sec-head"><h2>'+(th?'แผนของฉัน':'My p
 var il='';iv.forEach(function(it,i){il+='<div class="card" style="padding:13px 15px;margin-bottom:10px"><b style="font-family:var(--font)">“'+esc(it[0])+'”</b><p class="mut" style="margin:6px 0 0">'+esc(it[1])+'</p></div>';});document.getElementById('iv-list').innerHTML=il;organizePlan(b);}
 
 /* ===== Render all & boot ===== */
-function renderAll(){renderHUD();renderPath();renderBadges();renderFC();renderMockHistory();renderProfile();renderMore();renderExamDate();checkBadges(false);}
+function renderAll(){renderProfile();renderHUD();renderPath();renderBadges();renderFC();renderMockHistory();renderMore();renderExamDate();checkBadges(false);}

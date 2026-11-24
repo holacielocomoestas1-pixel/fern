@@ -1,10 +1,11 @@
 'use strict';
 
 Object.assign(I18N.th, {
-  hello: 'เตรียมสอบ\nไปทีละขั้น',
-  examWhen: 'บทเรียนสั้น ฝึกข้อสอบ และทบทวนตามจังหวะของคุณ',
   continuePath: 'เริ่มเรียน',
   resumePath: 'เรียนต่อ',
+  nextLesson: 'บทเรียนถัดไป',
+  lessonPosition: 'บทที่ {current} จาก {total}',
+  pathCompleteTitle: 'เรียนจบครบทุกบทแล้ว',
   pathTitle: 'เส้นทางการเรียน',
   learnTitle: 'บทเรียน',
   quizTitle: 'ฝึกข้อสอบ',
@@ -56,10 +57,11 @@ Object.assign(I18N.th, {
   courseComplete: 'ทบทวนบทเรียน'
 });
 Object.assign(I18N.en, {
-  hello: 'One lesson\nat a time',
-  examWhen: 'Study, practise and review at your own pace.',
-  continuePath: 'Start studying',
-  resumePath: 'Continue studying',
+  continuePath: 'Start lesson',
+  resumePath: 'Continue lesson',
+  nextLesson: 'Next lesson',
+  lessonPosition: 'Lesson {current} of {total}',
+  pathCompleteTitle: 'Study path complete',
   pathTitle: 'Study path',
   learnTitle: 'Lessons',
   quizTitle: 'Practice',
@@ -170,16 +172,24 @@ function go(name) {
 }
 
 function renderHUD() {
-  const goal = Math.min(30, Math.max(0, G.goal.xp));
+  const progress = document.getElementById('goal-progress');
+  const progressLabel = `${G.goal.xp} / ${progress.max} XP`;
   document.getElementById('hud-xp').textContent = G.xp;
   document.getElementById('hud-streak').textContent = G.streak.n;
   document.getElementById('hud-hearts').textContent = G.hearts.n;
   document.getElementById('hud-level').textContent = level();
-  document.getElementById('goal-bar').style.width = `${Math.round(goal / 30 * 100)}%`;
-  document.getElementById('goal-progress').setAttribute('aria-valuenow', String(goal));
-  document.getElementById('goal-txt').textContent = `${G.goal.xp} / 30 XP`;
+  progress.value = Math.min(progress.max, Math.max(0, G.goal.xp));
+  progress.setAttribute('aria-valuetext', progressLabel);
+  document.getElementById('goal-txt').textContent = progressLabel;
   document.getElementById('mistake-n').textContent = G.mistakes.length;
   document.getElementById('mistake-n2').textContent = G.mistakes.length;
+  const pillXp = document.getElementById('profile-pill-xp');
+  if (pillXp) pillXp.textContent = G.xp;
+  const xpBar = document.querySelector('.profile-xpbar i');
+  if (xpBar) xpBar.style.width = `${G.xp % 100}%`;
+  const xpNote = document.querySelector('.profile-xpnote');
+  if (xpNote) xpNote.textContent = `${G.xp % 100} / 100 XP`;
+  for (const el of document.querySelectorAll('.quiz-hearts-n')) el.textContent = G.hearts.n;
 }
 
 function renderPath() {
@@ -187,11 +197,12 @@ function renderPath() {
   let count = 0;
   let next = null;
   const units = SUBJECTS.map(subject => {
-    const lessons = lessonParts(subject.id).map((_, index) => {
+    const parts = lessonParts(subject.id);
+    const lessons = parts.map((_, index) => {
       const key = lessonKey(subject.id, index);
       const complete = G.lessons.includes(key);
       const unlocked = complete || previous === null || G.lessons.includes(previous);
-      if (!complete && unlocked && !next) next = { subject, index };
+      if (!complete && unlocked && !next) next = { subject, index, total: parts.length };
       previous = key;
       count += 1;
       return { index, complete, unlocked };
@@ -253,6 +264,17 @@ function renderPath() {
   for (const button of document.querySelectorAll('[data-practice]')) {
     button.onclick = () => startQuiz(button.dataset.practice);
   }
+  const lessonLabel = document.getElementById('next-lesson-label');
+  lessonLabel.textContent = t('nextLesson');
+  lessonLabel.hidden = !next;
+  document.getElementById('home-title').textContent = next ? subjectTitle(next.subject) : t('pathCompleteTitle');
+
+  const position = document.getElementById('next-lesson-position');
+  position.hidden = !next;
+  position.textContent = next
+    ? t('lessonPosition').replace('{current}', next.index + 1).replace('{total}', next.total)
+    : '';
+
   const resume = document.getElementById('resume-lesson');
   resume.textContent = t(next ? (G.lessons.length ? 'resumePath' : 'continuePath') : 'courseComplete');
   resume.onclick = next ? () => openLesson(next.subject.id, next.index) : () => go('learn');
@@ -321,7 +343,7 @@ function renderQ() {
   box.innerHTML = `<div class="prow">
       <button type="button" class="xbtn" id="exit-question" aria-label="${t('closeLabel')}">×</button>
       <div class="bar" role="progressbar" aria-label="${t('quizTitle')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
-      <span aria-label="${G.hearts.n} ${t('statHearts')}">♥ ${G.hearts.n}</span>
+      <span aria-label="${G.hearts.n} ${t('statHearts')}">♥ <span class="quiz-hearts-n">${G.hearts.n}</span></span>
     </div>
     <div class="question-head">
       <div><p class="mut">${esc(subjectTitle(subjById(sid)))} · ${attempt.i + 1} / ${attempt.list.length}</p>
@@ -488,9 +510,9 @@ function renderProfile() {
     return bState[metric] >= Number(amount);
   }).length;
   const stats = [
-    { ic: '🔥', v: G.streak.n, l: t('statStreak') },
-    { ic: '✦', v: G.xp, l: 'XP' },
-    { ic: '♥', v: G.hearts.n, l: t('statHearts') },
+    { ic: '🔥', v: G.streak.n, l: t('statStreak'), id: 'hud-streak' },
+    { ic: '✦', v: G.xp, l: 'XP', id: 'hud-xp' },
+    { ic: '♥', v: G.hearts.n, l: t('statHearts'), id: 'hud-hearts' },
     { ic: '📖', v: `${G.lessons.length}/${totalLessons}`, l: t('statLessons') },
     { ic: '🎯', v: hist.length ? `${hist.length} · ${bestMock}/150` : '0', l: t('statMocks') },
     { ic: '🏅', v: `${badgesOn}/${BADGES.length}`, l: t('statBadges') },
@@ -514,11 +536,11 @@ function renderProfile() {
       <h1 id="more-title" tabindex="-1">${esc(profileName())}</h1>
       <p class="profile-sub">${t('profileExam')}</p>
       <button type="button" class="profile-edit" id="edit-name">${t('editProfile')}</button>
-      <span class="profile-pill">${t('levelWord')} ${lvl} · ${G.xp} XP</span>
+      <span class="profile-pill">${t('levelWord')} <span id="hud-level">${lvl}</span> · <span id="profile-pill-xp">${G.xp}</span> XP</span>
       <div class="profile-xpbar" role="progressbar" aria-label="${t('levelWord')} ${lvl}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${xpInLevel}"><i style="width:${xpInLevel}%"></i></div>
       <p class="profile-xpnote">${xpInLevel} / 100 XP</p>
     </header>
-    <div class="stat-grid">${stats.map(s => `<div class="stat-cell"><span class="stat-cell__ic" aria-hidden="true">${s.ic}</span><b>${s.v}</b><small>${s.l}</small></div>`).join('')}</div>
+    <div class="stat-grid">${stats.map(s => `<div class="stat-cell"><span class="stat-cell__ic" aria-hidden="true">${s.ic}</span><b${s.id ? ` id="${s.id}"` : ''}>${s.v}</b><small>${s.l}</small></div>`).join('')}</div>
     <div id="exam-date-box"></div>
     <div class="sec-head"><h2>${t('myProgress')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
     <div class="menu-group">${progressRows}</div>`;
@@ -635,7 +657,6 @@ function confetti() {
 
 function bootFern() {
   for (const [id, size, mood] of [
-    ['logo-mascot', 36, 'avatar'], ['hero-mascot', 300, 'welcome'],
     ['learn-mascot', 100, 'practice'], ['practice-mascot', 100, 'guide'],
     ['cards-mascot', 100, 'practice'], ['mock-mascot', 100, 'goal']
   ]) {

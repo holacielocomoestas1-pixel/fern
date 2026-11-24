@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#faf9f5">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0c241c">
   <title>Fern — ติวสอบตำรวจ สายอำนวยการ | Thai Police Exam Prep</title>
   <link rel="icon" type="image/png" href="assets/icons/favicon-64.png">
   <link rel="stylesheet" href="web/mascot.css">
@@ -26,13 +26,8 @@
   <header class="topbar">
     <div class="hud">
       <button type="button" class="logo" onclick="go('home')" aria-label="Fern">
-        <span id="logo-mascot"></span><span>Fern<span class="logo-period" aria-hidden="true">.</span></span>
+        Fern<span class="logo-period" aria-hidden="true">.</span>
       </button>
-      <div class="quick-stats" role="group" aria-label="Streak, XP & hearts">
-        <span class="stat fire"><span class="flame-icon" aria-hidden="true"></span><b id="hud-streak">0</b><span class="sr" data-i18n="statStreak">วันต่อเนื่อง</span></span>
-        <span class="stat xp"><span aria-hidden="true">✦</span><b id="hud-xp">0</b><span>XP</span></span>
-        <span class="stat hp"><span aria-hidden="true">♥</span><b id="hud-hearts">5</b><span class="sr" data-i18n="statHearts">หัวใจ</span></span>
-      </div>
       <div class="langtog" role="group" aria-label="Language / ภาษา">
         <button type="button" id="lang-th" class="on" lang="th" aria-pressed="true">ไทย</button>
         <button type="button" id="lang-en" lang="en" aria-pressed="false">EN</button>
@@ -42,34 +37,45 @@
 
   <main class="wrap" id="main">
     <section class="view on" id="v-home" aria-labelledby="home-title">
-      <section class="hero">
+      <section class="hero" aria-labelledby="home-title">
+        <div class="hero-art">
+          <img
+            src="assets/hero/fern-reading-960.webp"
+            srcset="assets/hero/fern-reading-640.webp 640w, assets/hero/fern-reading-960.webp 960w, assets/hero/fern-reading-1254.webp 1254w"
+            sizes="(max-width: 760px) 100vw, 520px"
+            width="1254"
+            height="1254"
+            alt=""
+            fetchpriority="high"
+            decoding="async"
+          >
+        </div>
         <div class="hero-text">
-          <p class="kicker" data-i18n="examName">สอบตำรวจชั้นประทวน · สายอำนวยการ (อก.1)</p>
-          <h1 id="home-title" tabindex="-1" data-i18n="hello">เตรียมสอบ<br>ไปทีละขั้น</h1>
-          <p class="hero-note" data-i18n="examWhen">บทเรียนสั้น ฝึกข้อสอบ และทบทวนตามจังหวะของคุณ</p>
+          <p class="kicker" id="next-lesson-label">บทเรียนถัดไป</p>
+          <h1 id="home-title" tabindex="-1"></h1>
+          <p class="hero-note" id="next-lesson-position"></p>
           <button type="button" class="btn primary" id="resume-lesson" data-i18n="continuePath">เริ่มเรียน</button>
         </div>
-        <div class="hero-art" id="hero-mascot"></div>
       </section>
+
+      <div class="home-actions">
+        <button class="home-row" type="button" onclick="startDaily()"><span data-i18n="dailyBtn">ชาเลนจ์วันนี้</span></button>
+        <button class="home-row" type="button" onclick="startMistakes()"><span data-i18n="mistakeBtn">ทบทวนข้อที่ผิด</span><span class="quiet-count" id="mistake-n">0</span></button>
+        <details class="study-disclosure">
+          <summary class="home-row"><span data-i18n="pathTitle">เส้นทางการเรียน</span></summary>
+          <div class="study-content">
+            <div class="path" id="path"></div>
+            <button class="text-action" type="button" onclick="go('mock')" data-i18n="mockShort">สอบจำลอง</button>
+          </div>
+        </details>
+      </div>
 
       <section class="today" aria-labelledby="today-title">
         <div class="today-head">
           <h2 id="today-title" data-i18n="dailyGoal">เป้าหมายวันนี้</h2>
-          <div><b id="goal-txt">0 / 30 XP</b><span aria-hidden="true"> · </span><span data-i18n="level">เลเวล</span> <span id="hud-level">1</span></div>
+          <output id="goal-txt">0 / 30 XP</output>
         </div>
-        <div class="bar" id="goal-progress" role="progressbar" aria-labelledby="today-title" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><i id="goal-bar"></i></div>
-        <div class="today-actions">
-          <button class="text-action" type="button" onclick="startDaily()"><span class="action-glyph" aria-hidden="true">✦</span><span data-i18n="dailyBtn">ชาเลนจ์วันนี้</span></button>
-          <button class="text-action" type="button" onclick="startMistakes()"><span class="action-glyph" aria-hidden="true">↻</span><span data-i18n="mistakeBtn">ทบทวนข้อที่ผิด</span><span class="quiet-count" id="mistake-n">0</span></button>
-        </div>
-      </section>
-
-      <section class="route-section" aria-labelledby="route-title">
-        <div class="section-head">
-          <h2 id="route-title" data-i18n="pathTitle">เส้นทางการเรียน</h2>
-          <button class="text-action" type="button" onclick="go('mock')" data-i18n="mockShort">สอบจำลอง</button>
-        </div>
-        <div class="path" id="path"></div>
+        <progress id="goal-progress" max="30" value="0" aria-labelledby="today-title" aria-valuetext="0 / 30 XP"></progress>
       </section>
     </section>
 
