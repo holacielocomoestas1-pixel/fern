@@ -60,7 +60,25 @@ Object.assign(I18N.th, {
   dayOfExam: 'วันนี้คือวันสอบ ขอให้โชคดี!',
   closeLabel: 'ปิด',
   allOptions: 'ดูคำอธิบายตัวเลือก',
-  courseComplete: 'ทบทวนบทเรียน'
+  courseComplete: 'ทบทวนบทเรียน',
+  accountSec: 'บัญชีของฉัน',
+  accountSub: 'สำรองความก้าวหน้าไว้ในบัญชี — เปลี่ยนมือถือหรือล้างเครื่องก็ไม่หาย',
+  googleBtn: 'เข้าสู่ระบบด้วย Google',
+  googleBtnSub: 'เร็วที่สุด แตะครั้งเดียว',
+  emailPh: 'อีเมลของคุณ',
+  emailLinkBtn: 'ส่งลิงก์',
+  linkSent: 'ส่งลิงก์แล้ว — เปิดอีเมลแล้วแตะลิงก์เพื่อเข้าสู่ระบบ',
+  signOutBtn: 'ออกจากระบบ',
+  signOutSub: 'ความก้าวหน้าในเครื่องนี้ยังอยู่ครบ',
+  syncedLabel: 'ซิงก์กับบัญชีแล้ว ✓',
+  syncingLabel: 'กำลังซิงก์…',
+  offlineLabel: 'ออฟไลน์ — จะซิงก์เมื่อมีเน็ต',
+  syncErrorLabel: 'ซิงก์ไม่สำเร็จ — จะลองอีกครั้งเอง',
+  completeLinkTitle: 'แตะลิงก์จากอีเมลมาแล้วใช่ไหม',
+  completeLinkSub: 'พิมพ์อีเมลเดิมอีกครั้งเพื่อเข้าสู่ระบบให้เสร็จ',
+  completeLinkBtn: 'เข้าสู่ระบบ',
+  authError: 'เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้งนะ',
+  invalidEmail: 'พิมพ์อีเมลให้ถูกต้องก่อนนะ'
 });
 Object.assign(I18N.en, {
   continuePath: 'Start lesson',
@@ -122,7 +140,25 @@ Object.assign(I18N.en, {
   dayOfExam: 'Today is your exam. Good luck!',
   closeLabel: 'Close',
   allOptions: 'See the options explained',
-  courseComplete: 'Review lessons'
+  courseComplete: 'Review lessons',
+  accountSec: 'My account',
+  accountSub: 'Back up your progress to your account — a new phone or a reset won’t lose it',
+  googleBtn: 'Continue with Google',
+  googleBtnSub: 'Fastest — one tap',
+  emailPh: 'Your email',
+  emailLinkBtn: 'Send link',
+  linkSent: 'Link sent — open your email and tap the link to sign in',
+  signOutBtn: 'Sign out',
+  signOutSub: 'Your progress on this device stays put',
+  syncedLabel: 'Synced to your account ✓',
+  syncingLabel: 'Syncing…',
+  offlineLabel: 'Offline — will sync when back online',
+  syncErrorLabel: 'Sync failed — will retry automatically',
+  completeLinkTitle: 'Opened the link from your email?',
+  completeLinkSub: 'Enter the same email again to finish signing in',
+  completeLinkBtn: 'Sign in',
+  authError: 'Sign-in failed — please try again',
+  invalidEmail: 'Please enter a valid email first'
 });
 
 function fernAsset(relative) {
@@ -542,6 +578,107 @@ window.addEventListener('appinstalled', () => {
   renderProfile();
 });
 
+/* ===== Cuenta / sincronización con Firebase (v4.3) ===== */
+
+function syncStatusText(status) {
+  if (status === 'syncing') return t('syncingLabel');
+  if (status === 'offline') return t('offlineLabel');
+  if (status === 'error') return t('syncErrorLabel');
+  return t('syncedLabel');
+}
+
+function accountSection() {
+  const sync = window.FernSync ? window.FernSync.getSyncInfo() : { user: null, status: 'idle', ready: false };
+  const user = sync.user;
+  let body = '';
+  if (!user) {
+    const pending = !!(window.FernSync && window.FernSync.emailLinkNeedsEmail());
+    body = `
+      <div class="menu-row account-info">
+        <span class="menu-ic" aria-hidden="true">☁️</span>
+        <span class="menu-txt"><strong>${t('accountSec')}</strong><small>${t('accountSub')}</small></span>
+      </div>
+      <button type="button" class="menu-row" id="acct-google">
+        <span class="menu-ic acct-g" aria-hidden="true">G</span>
+        <span class="menu-txt"><strong>${t('googleBtn')}</strong><small>${t('googleBtnSub')}</small></span>
+        <span class="menu-chev" aria-hidden="true">›</span>
+      </button>
+      <div class="menu-row acct-email-row">
+        <span class="menu-ic" aria-hidden="true">✉️</span>
+        <input id="acct-email" type="email" inputmode="email" autocomplete="email" placeholder="${t('emailPh')}">
+        <button type="button" class="btn acct-link-btn" id="acct-link">${t('emailLinkBtn')}</button>
+      </div>
+      ${pending ? `<div class="menu-row account-info">
+        <span class="menu-ic" aria-hidden="true">✉️</span>
+        <span class="menu-txt"><strong>${t('completeLinkTitle')}</strong><small>${t('completeLinkSub')}</small></span>
+        <button type="button" class="btn acct-link-btn" id="acct-complete">${t('completeLinkBtn')}</button>
+      </div>` : ''}
+      <p class="acct-msg" id="acct-msg" hidden></p>`;
+  } else {
+    body = `
+      <div class="menu-row account-info">
+        <span class="menu-ic" aria-hidden="true">☁️</span>
+        <span class="menu-txt"><strong>${esc(user.email || '')}</strong><small id="acct-status">${syncStatusText(sync.status)}</small></span>
+      </div>
+      <button type="button" class="menu-row" id="acct-signout">
+        <span class="menu-ic" aria-hidden="true">🚪</span>
+        <span class="menu-txt"><strong>${t('signOutBtn')}</strong><small>${t('signOutSub')}</small></span>
+        <span class="menu-chev" aria-hidden="true">›</span>
+      </button>`;
+  }
+  return `<div class="sec-head"><h2>${t('accountSec')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
+    <div class="menu-group account-group">${body}</div>`;
+}
+
+function showAcctMsg(text) {
+  const el = document.getElementById('acct-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = false;
+}
+
+function wireAccount() {
+  if (!window.FernSync) return;
+  const googleBtn = document.getElementById('acct-google');
+  if (googleBtn) googleBtn.onclick = async () => {
+    try { await window.FernSync.signInWithGoogle(); }
+    catch (e) { showAcctMsg(t('authError')); }
+  };
+  const emailInput = document.getElementById('acct-email');
+  const validEmail = () => {
+    const em = emailInput ? emailInput.value.trim() : '';
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) ? em : '';
+  };
+  const linkBtn = document.getElementById('acct-link');
+  if (linkBtn) linkBtn.onclick = async () => {
+    const em = validEmail();
+    if (!em) { showAcctMsg(t('invalidEmail')); return; }
+    try { await window.FernSync.sendEmailLink(em); showAcctMsg(t('linkSent')); }
+    catch (e) { showAcctMsg(t('authError')); }
+  };
+  const completeBtn = document.getElementById('acct-complete');
+  if (completeBtn) completeBtn.onclick = async () => {
+    const em = validEmail();
+    if (!em) { showAcctMsg(t('invalidEmail')); return; }
+    try { await window.FernSync.completeEmailLink(em); }
+    catch (e) { showAcctMsg(t('authError')); }
+  };
+  const signOutBtn = document.getElementById('acct-signout');
+  if (signOutBtn) signOutBtn.onclick = async () => {
+    try { await window.FernSync.signOutUser(); } catch (e) { /* salir no debe fallar */ }
+  };
+}
+
+// El módulo de Firebase avisa de cambios de sesión y de estado de sync:
+// un cambio de sesión re-dibuja el perfil; un cambio de estado solo actualiza
+// la línea de estado para no borrar el correo que se esté escribiendo.
+window.addEventListener('fern-auth', event => {
+  const d = (event && event.detail) || {};
+  if (d.kind === 'auth') { renderProfile(); return; }
+  const el = document.getElementById('acct-status');
+  if (el) el.textContent = syncStatusText(d.status);
+});
+
 function renderProfile() {
   const box = document.getElementById('profile-head');
   if (!box) return;
@@ -601,11 +738,13 @@ function renderProfile() {
       <p class="profile-xpnote">${xpInLevel} / 100 XP</p>
     </header>
     <div class="stat-grid">${stats.map(s => `<div class="stat-cell"><span class="stat-cell__ic" aria-hidden="true">${s.ic}</span><b${s.id ? ` id="${s.id}"` : ''}>${s.v}</b><small>${s.l}</small></div>`).join('')}</div>
+    ${accountSection()}
     <div id="exam-date-box"></div>
     <div class="sec-head"><h2>${t('myProgress')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
     <div class="menu-group">${progressRows}</div>${appSec}`;
   document.getElementById('edit-name').onclick = openEditName;
   document.getElementById('avatar-pick').onclick = openAvatarPick;
+  wireAccount();
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.onclick = async () => {
     if (!deferredInstall) return;

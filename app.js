@@ -31,6 +31,9 @@ var EXTRA=[
 {type:'order',th:'เรียงชั้นความเร็วจากช้าไปเร็ว',en:'Order urgency levels slow → fast',items:['ด่วน','ด่วนมาก','ด่วนที่สุด'],e:'ด่วน → ด่วนมาก → ด่วนที่สุด'}];
 /* ===== Storage & game state ===== */
 var LS={get:function(k,d){try{var v=localStorage.getItem('fern2-'+k);if(v!==null)return JSON.parse(v);}catch(e){}try{var o=localStorage.getItem('fern-'+k);return o?JSON.parse(o):d;}catch(e){return d;}},set:function(k,v){try{localStorage.setItem('fern2-'+k,JSON.stringify(v));}catch(e){}}};
+/* v4.3: cada guardado local avisa al módulo de sincronización (si está cargado). */
+var _fernSetOrig=LS.set;
+LS.set=function(k,v){_fernSetOrig(k,v);try{if(window.FernSync)window.FernSync.noteLocalChange('main');}catch(e){}};
 LANG=LS.get('lang','th');if(LANG!=='en')LANG='th';
 var todayStr=new Date().toDateString();
 var G={xp:LS.get('xp',0),hearts:LS.get('hearts',{n:5,d:todayStr}),streak:LS.get('streak',{n:0,last:''}),goal:LS.get('goal',{d:todayStr,xp:0}),lessons:LS.get('lessons-done',[]),mistakes:LS.get('mistakes',[]),dailyDone:LS.get('daily-done','')};

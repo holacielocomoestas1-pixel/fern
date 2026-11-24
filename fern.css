@@ -617,6 +617,23 @@ body:has(.modal) { overflow: hidden; }
 .install-hint { cursor: default; }
 .install-hint .menu-txt small { line-height: 1.45; }
 .install-hint-x { min-width: 40px; }
+/* Cuenta / sincronización (v4.3) */
+.account-info { cursor: default; }
+.account-info:active { background: transparent; }
+.menu-ic.acct-g { font-weight: 800; font-size: 21px; font-family: var(--font); }
+.acct-email-row { gap: 10px; cursor: default; }
+.acct-email-row:active { background: transparent; }
+.acct-email-row input {
+  flex: 1; min-width: 0; background: var(--soft); border: 1px solid var(--line);
+  color: var(--ink); border-radius: 12px; padding: 11px 12px;
+  font: inherit; font-size: 16px;
+}
+.acct-email-row input::placeholder { color: var(--mut); }
+.acct-email-row input:focus { outline: 2px solid var(--green); outline-offset: 0; }
+.btn.acct-link-btn { flex: 0 0 auto; min-height: 44px; padding: 9px 13px; font-size: 14px; margin: 0; }
+.account-group .menu-row .btn.acct-link-btn { margin-left: 6px; }
+.acct-msg { margin: 0; padding: 10px 14px 12px; color: var(--mut); font-size: 13px; line-height: 1.5; }
+.acct-msg[hidden] { display: none; }
 .profile-icon::before {
   width: 8px; height: 8px; border: 1.6px solid; border-radius: 50%;
   left: 5px; top: 1px;

@@ -86,6 +86,24 @@ export function sources(ctx, ids) {
   return `<details class="sources"><summary>${ctx.t("แหล่งอ้างอิง", "References")}</summary><ul>${valid.map(source => `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a></li>`).join("")}</ul></details>`;
 }
 
+// v4.3: línea de estado de la cuenta. El inicio de sesión vive en el perfil
+// de la app principal; aquí solo se muestra si el progreso está respaldado.
+function syncLine(ctx) {
+  const { t, sync } = ctx;
+  if (!sync) return "";
+  if (!sync.user) {
+    return `<p class="subtle section">☁️ ${t("ยังไม่ได้เข้าสู่ระบบ — ความก้าวหน้าอยู่ในเครื่องนี้เท่านั้น เข้าสู่ระบบได้ที่หน้าโปรไฟล์ในแอปหลัก", "Not signed in — progress stays on this device only. Sign in from your profile in the main app.")}</p>`;
+  }
+  const s = sync.status === "syncing"
+    ? t("กำลังซิงก์…", "Syncing…")
+    : sync.status === "offline"
+      ? t("ออฟไลน์ — จะซิงก์เมื่อมีเน็ต", "Offline — will sync when back online")
+      : sync.status === "error"
+        ? t("ซิงก์ไม่สำเร็จ — จะลองอีกครั้งเอง", "Sync failed — will retry automatically")
+        : t("ซิงก์กับบัญชีแล้ว ✓", "Synced to your account ✓");
+  return `<p class="subtle section">☁️ ${esc(sync.user.email || "")} · ${s}</p>`;
+}
+
 export function homeView(ctx) {
   const { t, lang, n, state, catalog } = ctx;
   const remaining = daysUntil(state.examDate);
@@ -121,7 +139,8 @@ export function homeView(ctx) {
     <details class="sources"><summary>${t("กำหนดวันสอบของคุณ", "Set your exam date")}</summary><form id="exam-form" class="fields"><label class="field field-short">${t("วันสอบ", "Exam date")}<input name="date" type="date" value="${esc(state.examDate)}" max="2099-12-31"></label><button class="act ghost" type="submit">${t("บันทึก", "Save")}</button>${state.examDate ? `<button class="text-button" type="button" data-action="clear-date">${t("ล้างวันที่", "Clear date")}</button>` : ""}</form><p class="subtle">${t("รอบ อก.1 ปี 2569 กำหนดสอบข้อเขียน 29 พฤศจิกายน 2569 ตรวจรายละเอียดของคุณในบัตรสอบ", "The 2569 administration intake lists 29 November 2026 for the written exam. Check your own admission slip.")} <a class="link" href="${EXAM_SOURCE}" target="_blank" rel="noopener noreferrer">${t("ประกาศ", "Notice")}</a></p></details>
   </section>
   <section class="section"><div class="section-head"><h2>${t("เลือกวิชา", "Pick up a subject")}</h2><a class="link" href="#library">${t("ดูทั้งหมด", "View library")}</a></div><div class="list">${SUBJECTS.map(s => row({ href: `#library/${s.id}`, glyph: s.icon, label: esc(s[lang]), data: n(catalog.subjects[s.id].questions) })).join("")}</div></section>
-  ${seen ? `<p class="subtle section">${t(`ทำไปแล้ว ${n(seen)} ข้อ`, `You’ve attempted ${n(seen)} different questions.`)}</p>` : ""}`;
+  ${seen ? `<p class="subtle section">${t(`ทำไปแล้ว ${n(seen)} ข้อ`, `You’ve attempted ${n(seen)} different questions.`)}</p>` : ""}
+  ${syncLine(ctx)}`;
 }
 
 export function libraryView(ctx, id) {

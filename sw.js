@@ -1,6 +1,6 @@
 'use strict';
 /* Fern service worker — app shell offline. Generado por gen-sw.js; no editar a mano. */
-const CACHE = 'fern-v4.2';
+const CACHE = 'fern-v4.3';
 const SHELL = [
   './',
   'index.html',
@@ -111,6 +111,7 @@ const SHELL = [
   'fern-academia/views.mjs',
   'fern-ui.js',
   'fern.css',
+  'firebase-sync.mjs',
   'manifest.webmanifest',
   'preview/catalog.js',
   'preview/preview.css',

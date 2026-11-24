@@ -7,6 +7,9 @@ import {
   mockView, cardsView, gamesView, gamePicker, gameView, progressView, loadingView,
 } from "./views.mjs";
 import { interviewView } from "./interview.mjs";
+import {
+  initFirebaseSync, noteLocalChange, onSyncEvent, getSyncInfo, onAcademyCloudApply,
+} from "../firebase-sync.mjs";
 
 const main = document.querySelector("#content");
 const top = document.querySelector("#top");
@@ -49,7 +52,7 @@ function previousLanguage() {
 let lang = validLang(linkedLanguage) ? linkedLanguage : state.lang || previousLanguage();
 const t = (th, en) => lang === "en" ? en : th;
 const n = number => new Intl.NumberFormat(lang, { maximumFractionDigits: 0 }).format(number);
-const ctx = () => ({ t, n, lang, state, catalog, practiceSession, mockSession, cardRound });
+const ctx = () => ({ t, n, lang, state, catalog, practiceSession, mockSession, cardRound, sync: getSyncInfo() });
 const asset = path => new URL(path, import.meta.url).href;
 const subjectId = id => SUBJECTS.some(s => s.id === id);
 
@@ -67,6 +70,8 @@ function commit(change) {
   } catch {
     persistAvailable = false;
   }
+  // v4.3: cada cambio local avisa al módulo de sincronización.
+  try { noteLocalChange("academy"); } catch { /* sin sync no pasa nada */ }
 }
 
 async function readJson(file) {
@@ -738,6 +743,13 @@ async function boot() {
       problem();
     }
     render();
+    // v4.3: sincronización con Firebase en segundo plano. Si la nube trae un
+    // progreso más nuevo, se re-lee el estado y se re-dibuja la vista actual.
+    try {
+      onAcademyCloudApply(() => { state = readState(storage); render(false); });
+      onSyncEvent(() => { if (current === "") render(false); });
+      initFirebaseSync();
+    } catch { /* la Academy funciona sin sync */ }
   } catch {
     main.innerHTML = `<p class="empty">${t("โหลดคลังบทเรียนไม่สำเร็จ", "The study library couldn’t load.")}</p><button type="button" class="act ghost" data-action="retry">${t("ลองอีกครั้ง", "Retry")}</button>`;
   }
