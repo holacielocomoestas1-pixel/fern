@@ -111,7 +111,7 @@ h3 { font-size: 1.15rem; letter-spacing: -.012em; }
 .row-title { display: block; font-weight: 740; line-height: 1.36; }
 .row-note { display: block; color: var(--muted); font-size: .9rem; margin-top: 3px; }
 .row-data { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; text-align: right; flex-shrink: 0; }
-.kpis { display: grid; grid-template-columns: repeat(3, 1fr); padding: 15px 0; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 12px 28px rgba(0, 0, 0, .38); }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 12px 28px rgba(0, 0, 0, .38); }
 .kpi { min-width: 0; padding: 2px 13px; }
 .kpi:first-child { padding-left: 0; }
 .kpi + .kpi { border-left: 1px solid var(--line); }
