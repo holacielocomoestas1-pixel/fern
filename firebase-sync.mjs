@@ -237,6 +237,7 @@ async function syncOnSignIn() {
     const meta = readMeta();
     let mainApplied = false;
     let academyApplied = false;
+    let uploaded = false;
 
     // Lado principal
     const localMain = snapshotMain();
@@ -246,7 +247,7 @@ async function syncOnSignIn() {
         mainApplied = true;
       }
     } else if (localMain && (!cloud.mainRaw || meta.main > Number(cloud.mainUpdatedAt || 0))) {
-      await uploadSide("main");
+      if (await uploadSide("main")) uploaded = true;
     }
 
     // Lado Academy
@@ -257,10 +258,28 @@ async function syncOnSignIn() {
         academyApplied = true;
       }
     } else if (localAcademy && (!cloud.academyRaw || meta.academy > Number(cloud.academyUpdatedAt || 0))) {
-      await uploadSide("academy");
+      if (await uploadSide("academy")) uploaded = true;
     }
 
     writeMeta(meta);
+
+    // v4.3.1: si el documento no existe y no se subió nada (dispositivo sin
+    // progreso local), crear el documento con un marcador. Sin esto, el
+    // perfil mostraba "sincronizado" sin que existiera ningún documento en
+    // Firestore, y la escritura nunca quedaba verificada.
+    if (!uploaded && Object.keys(cloud).length === 0) {
+      try {
+        const fresh = readMeta();
+        await sdk.fns.setDoc(docRef(), {
+          mainUpdatedAt: fresh.main || 0,
+          academyUpdatedAt: fresh.academy || 0,
+          updatedAt: Date.now(),
+        }, { merge: true });
+      } catch {
+        setStatus(typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "error");
+      }
+    }
+
     lastSyncAt = Date.now();
     if (syncStatus === "syncing") setStatus("synced");
 
