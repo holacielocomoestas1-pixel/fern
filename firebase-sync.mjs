@@ -14,7 +14,7 @@
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyChua9lY1-quQ8RBL2DK_vIL3U1vV84G9s",
-  authDomain: "fern-thai-police.firebaseapp.com", // PENDIENTE v4.5.1: cambiar a "auth.fernacademy.app" cuando Firebase emita su certificado SSL (estado "Certificado de creación" desde 2026-11-25 05:03; sin cert, el inicio de sesión se rompería)
+  authDomain: "auth.fernacademy.app", // v4.5.1: dominio propio de Auth — Google muestra auth.fernacademy.app al iniciar sesión (cert SSL verificado 2026-11-25 05:12)
   projectId: "fern-thai-police",
   storageBucket: "fern-thai-police.firebasestorage.app",
   messagingSenderId: "300376943998",
