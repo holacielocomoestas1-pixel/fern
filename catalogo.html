@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Fern · Kit de mascota</title>
+  <link rel="icon" href="assets/icons/favicon-64.png" type="image/png">
+  <link rel="stylesheet" href="web/mascot.css">
+  <link rel="stylesheet" href="preview/preview.css">
+  <script src="preview/catalog.js" defer></script>
+  <script src="preview/preview.js" defer></script>
+</head>
+<body>
+  <header class="topbar shell">
+    <a class="wordmark" href="#">
+      <img src="assets/icons/favicon-64.png" alt="" width="34" height="34">
+      <span>Kit de mascota</span>
+    </a>
+    <nav aria-label="Secciones">
+      <a href="index.html">Abrir app</a>
+      <a href="#poses">Ver poses</a>
+    </nav>
+  </header>
+  <main class="shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Mascota<br>de Fern</h1>
+        <p>El osito de Fern acompaña el estudio, la práctica y los resultados.</p>
+        <a class="primary-link" href="#pantalla">Probar en pantalla <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-art">
+        <img src="assets/hero/mascot-hero-1200.webp" alt="Mascota de peluche con gorro de volantes marfil, nariz naranja y dos patitas levantadas" width="1200" height="1200" fetchpriority="high">
+      </div>
+    </section>
+
+    <section class="section" id="pantalla" aria-labelledby="stage-title">
+      <div class="section-head">
+        <div>
+          <h2 id="stage-title">Pruébala en pantalla</h2>
+          <p>Simula el inicio de una lección, una respuesta y sus estados de apoyo.</p>
+        </div>
+        <div class="toggles">
+          <div class="segmented" aria-label="Fondo de la muestra" role="group">
+            <button type="button" data-theme="light" aria-pressed="true">Claro</button>
+            <button type="button" data-theme="dark" aria-pressed="false">Oscuro</button>
+          </div>
+          <div class="segmented" aria-label="Idioma de la muestra" role="group">
+            <button type="button" data-lang="es" aria-label="Español" aria-pressed="true">ES</button>
+            <button type="button" data-lang="en" aria-label="Inglés" aria-pressed="false">EN</button>
+          </div>
+        </div>
+      </div>
+      <div class="sandbox">
+        <aside class="controls">
+          <label for="state">Estado de la mascota</label>
+          <select id="state"></select>
+          <p id="state-use"></p>
+          <div class="shortcuts" aria-label="Probar estados frecuentes" role="group">
+            <button type="button" data-state="welcome">Bienvenida</button>
+            <button type="button" data-state="correct">Acierto</button>
+            <button type="button" data-state="retry">Segundo intento</button>
+            <button type="button" data-state="complete">Fin de lección</button>
+          </div>
+          <button id="replay" type="button" class="replay">Repetir animación <span aria-hidden="true">↻</span></button>
+        </aside>
+
+        <div id="stage" class="stage" data-color="light" data-state="welcome">
+          <div class="sample">
+            <div class="sample-image" id="sample-image"></div>
+            <div class="sample-copy" id="sample-copy" aria-live="polite">
+              <h3 id="sample-title"></h3>
+              <p id="sample-body"></p>
+            </div>
+            <button id="sample-action" type="button"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section catalog" id="poses" aria-labelledby="poses-title">
+      <div class="section-head">
+        <div>
+          <h2 id="poses-title">Catálogo de poses</h2>
+          <p>Selecciona una pose para probarla. Cada imagen se descarga por separado.</p>
+        </div>
+        <div class="segmented filters" aria-label="Filtrar poses" role="group">
+          <button type="button" data-filter="all" aria-pressed="true">Todas</button>
+          <button type="button" data-filter="lesson" aria-pressed="false">Lecciones</button>
+          <button type="button" data-filter="progress" aria-pressed="false">Progreso</button>
+          <button type="button" data-filter="support" aria-pressed="false">Soporte</button>
+          <button type="button" data-filter="identity" aria-pressed="false">Identidad</button>
+        </div>
+      </div>
+      <ul id="asset-grid" class="asset-grid"></ul>
+    </section>
+  </main>
+  <footer class="footer shell">
+    <a href="Fern-Guia-Mascota.pdf">Guía de diseño en PDF <span aria-hidden="true">↗</span></a>
+    <a href="web/mascot-states.json" download>Mapa de estados en JSON <span aria-hidden="true">↓</span></a>
+  </footer>
+</body>
+</html>
