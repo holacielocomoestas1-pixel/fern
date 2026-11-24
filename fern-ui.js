@@ -37,6 +37,10 @@ Object.assign(I18N.th, {
   saveBtn: 'บันทึก',
   cancelBtn: 'ยกเลิก',
   pickAvatar: 'เลือกตัวการ์ตูน',
+  appSec: 'แอป',
+  installApp: 'ติดตั้งแอป',
+  installAppSub: 'เปิดเร็วจากหน้าจอหลัก',
+  installHint: 'แตะปุ่มแชร์ แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”',
   planSubtitle: 'วางแผนตามวันสอบของคุณ',
   practiceBySubject: 'ฝึกตามวิชา',
   statStreak: 'วันต่อเนื่อง',
@@ -93,6 +97,10 @@ Object.assign(I18N.en, {
   saveBtn: 'Save',
   cancelBtn: 'Cancel',
   pickAvatar: 'Pick your buddy',
+  appSec: 'App',
+  installApp: 'Install the app',
+  installAppSub: 'Open fast from your home screen',
+  installHint: 'Tap Share, then choose “Add to Home Screen”',
   planSubtitle: 'Build a plan around your exam date.',
   practiceBySubject: 'Practise by subject',
   statStreak: 'streak days',
@@ -496,6 +504,27 @@ function profileAvatar() {
   return typeof a === 'string' && a ? a : 'avatar';
 }
 
+let deferredInstall = null;
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstall = event;
+  renderProfile();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstall = null;
+  renderProfile();
+});
+
 function renderProfile() {
   const box = document.getElementById('profile-head');
   if (!box) return;
@@ -527,6 +556,20 @@ function renderProfile() {
       <span class="menu-txt"><strong>${esc(subjectTitle(subject))}</strong><small>${sub}</small></span>
       <span class="menu-chev" aria-hidden="true">›</span></button>`;
   }).join('');
+  const showInstall = !!deferredInstall;
+  const showIOSHint = !isStandalone() && isIOS() && !LS.get('install-hint-off', false);
+  const appSec = (showInstall || showIOSHint) ? `
+    <div class="sec-head"><h2>${t('appSec')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
+    <div class="menu-group">
+      ${showInstall ? `<button type="button" class="menu-row" id="install-btn">
+        <span class="menu-ic" aria-hidden="true">📲</span>
+        <span class="menu-txt"><strong>${t('installApp')}</strong><small>${t('installAppSub')}</small></span>
+        <span class="menu-chev" aria-hidden="true">›</span></button>` : ''}
+      ${showIOSHint ? `<div class="menu-row install-hint">
+        <span class="menu-ic" aria-hidden="true">📲</span>
+        <span class="menu-txt"><strong>${t('installApp')}</strong><small>${t('installHint')}</small></span>
+        <button type="button" class="xbtn install-hint-x" id="install-hint-x" aria-label="${t('closeLabel')}">×</button></div>` : ''}
+    </div>` : '';
   box.innerHTML = `
     <header class="profile-head">
       <button type="button" class="profile-avatar" id="avatar-pick" aria-label="${t('pickAvatar')}">
@@ -543,9 +586,19 @@ function renderProfile() {
     <div class="stat-grid">${stats.map(s => `<div class="stat-cell"><span class="stat-cell__ic" aria-hidden="true">${s.ic}</span><b${s.id ? ` id="${s.id}"` : ''}>${s.v}</b><small>${s.l}</small></div>`).join('')}</div>
     <div id="exam-date-box"></div>
     <div class="sec-head"><h2>${t('myProgress')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
-    <div class="menu-group">${progressRows}</div>`;
+    <div class="menu-group">${progressRows}</div>${appSec}`;
   document.getElementById('edit-name').onclick = openEditName;
   document.getElementById('avatar-pick').onclick = openAvatarPick;
+  const installBtn = document.getElementById('install-btn');
+  if (installBtn) installBtn.onclick = async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    await deferredInstall.userChoice;
+    deferredInstall = null;
+    renderProfile();
+  };
+  const hintX = document.getElementById('install-hint-x');
+  if (hintX) hintX.onclick = () => { LS.set('install-hint-off', true); renderProfile(); };
   for (const row of box.querySelectorAll('[data-progress]')) {
     row.onclick = () => startQuiz(row.dataset.progress);
   }
@@ -663,6 +716,11 @@ function bootFern() {
     document.getElementById(id).innerHTML = mascotArt(size, mood);
   }
   applyLang();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  const deep = new URLSearchParams(location.search).get('view');
+  if (deep && ['home', 'learn', 'quiz', 'cards', 'mock', 'more'].includes(deep)) go(deep);
   const splash = document.getElementById('splash');
   const load = splash.querySelector('img');
   const ready = load.decode ? load.decode().catch(() => {}) : Promise.resolve();
