@@ -1,6 +1,6 @@
 'use strict';
 /* Fern service worker — app shell offline. Generado por gen-sw.js; no editar a mano. */
-const CACHE = 'fern-v3.6';
+const CACHE = 'fern-v3.7';
 const SHELL = [
   './',
   'index.html',
@@ -89,6 +89,24 @@ const SHELL = [
   'assets/webp/welcome@2x.webp',
   'catalogo.html',
   'data.js',
+  'fern-academia/app.css',
+  'fern-academia/app.mjs',
+  'fern-academia/assets/avatar.webp',
+  'fern-academia/assets/cheer.webp',
+  'fern-academia/assets/guide.webp',
+  'fern-academia/assets/reader.webp',
+  'fern-academia/core.mjs',
+  'fern-academia/games/match.css',
+  'fern-academia/games/match.mjs',
+  'fern-academia/games/race-art.mjs',
+  'fern-academia/games/race-model.mjs',
+  'fern-academia/games/race-model.test.mjs',
+  'fern-academia/games/race.css',
+  'fern-academia/games/race.mjs',
+  'fern-academia/index.html',
+  'fern-academia/interview.mjs',
+  'fern-academia/launcher.js',
+  'fern-academia/views.mjs',
   'fern-ui.js',
   'fern.css',
   'manifest.webmanifest',
@@ -120,8 +138,11 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
   if (event.request.mode === 'navigate') {
+    // La navegación cache-first debe servir la página correcta: la Academy
+    // tiene su propio index.html y sin esto siempre cargaría el de la app.
+    const fallback = url.pathname.includes('/fern-academia/') ? 'fern-academia/index.html' : 'index.html';
     event.respondWith(
-      caches.match('index.html').then(cached => cached || fetch(event.request))
+      caches.match(fallback).then(cached => cached || fetch(event.request))
     );
     return;
   }

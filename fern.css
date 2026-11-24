@@ -595,3 +595,20 @@ body:has(.modal) { overflow: hidden; }
   .hero-art { margin-block-start: 0; }
   .hero-art img { max-height: 62vh; width: auto; max-width: 100%; margin-inline: auto; }
 }
+
+/* Fern Academy — entradas del launcher en el inicio, con el mismo aspecto
+   que las filas de acciones (.home-row). El launcher pone estilos en línea
+   en el contenedor (flex) y los enlaces; aquí solo se les da forma de fila. */
+#fern-academia-entry { flex-direction: column; align-items: stretch; }
+#fern-academia-entry a {
+  width: 100%; padding: 6px 4px 6px 0;
+  text-decoration: none; color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+}
+#fern-academia-entry a:hover { color: var(--green); }
+#fern-academia-entry a::after {
+  content: ""; flex: 0 0 7px; height: 7px; margin-inline-start: auto;
+  transform: rotate(-45deg); border-block-end: 1.5px solid var(--mut);
+  border-inline-end: 1.5px solid var(--mut);
+}

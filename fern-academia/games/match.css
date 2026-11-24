@@ -1,0 +1,422 @@
+.canopy {
+  --grove-ink: #f5eedc;
+  --grove-muted: #b8c9b9;
+  --grove-mint: #d1f2be;
+  --grove-line: #a5c7a32d;
+  --grove-bg: #0b2119;
+  width: 100%;
+  max-width: 43rem;
+  margin-inline: auto;
+  color: var(--grove-ink);
+}
+.canopy *,
+.canopy *::before,
+.canopy *::after { box-sizing: border-box; }
+.canopy button { font: inherit; }
+.canopy [hidden] { display: none !important; }
+
+.canopy-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.1rem;
+  margin-block: 0 1.1rem;
+}
+.canopy-intro h2 {
+  margin: 0;
+  color: var(--grove-ink);
+  font-size: clamp(1.65rem, 7vw, 2.8rem);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -.045em;
+}
+.canopy-intro p,
+.canopy-how {
+  margin: .45rem 0 0;
+  max-width: 44ch;
+  color: var(--grove-muted);
+  font-size: .875rem;
+  line-height: 1.48;
+}
+.canopy-sigil {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 3.4rem;
+  height: 3.4rem;
+  border: 1px solid #cbe7b648;
+  border-radius: 42%;
+  background: radial-gradient(circle at 22% 20%, #779d5550, transparent 74%), #1c3827;
+  transform: rotate(9deg);
+}
+.canopy-sigil .canopy-glyph { width: 52%; }
+
+.canopy-stages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  margin-block-end: 1.05rem;
+  border-block-end: 1px solid var(--grove-line);
+}
+.canopy-stages button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: .42rem .25rem;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--grove-muted);
+  font-size: clamp(.69rem, 2.9vw, .88rem);
+  font-weight: 650;
+  line-height: 1.22;
+  cursor: pointer;
+}
+.canopy-stages button[aria-pressed="true"] {
+  border-block-end-color: var(--grove-mint);
+  color: var(--grove-mint);
+}
+.canopy button:focus-visible {
+  outline: 2px solid #f7ce88;
+  outline-offset: 3px;
+}
+.canopy button:disabled { cursor: default; }
+.canopy-stages button:disabled { opacity: .66; }
+
+.canopy-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: .8rem;
+  max-width: 30rem;
+  margin-inline: auto;
+}
+.canopy-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(2.5rem, 1fr) minmax(2.5rem, 1fr);
+  align-items: start;
+  gap: .7rem;
+}
+.canopy-target,
+.canopy-counter {
+  display: grid;
+  gap: .2rem;
+}
+.canopy-counter { justify-items: end; }
+.canopy-stat-label {
+  color: var(--grove-muted);
+  font-size: .735rem;
+  line-height: 1.25;
+}
+.canopy-stats strong {
+  color: var(--grove-ink);
+  font-weight: 730;
+  font-size: clamp(1rem, 4vw, 1.3rem);
+  line-height: 1.13;
+  font-variant-numeric: tabular-nums;
+}
+.canopy-target progress {
+  width: 100%;
+  max-width: 9.4rem;
+  height: .27rem;
+  margin-block-start: .13rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 99px;
+  appearance: none;
+  background: #2c4938;
+  color: var(--grove-mint);
+  accent-color: var(--grove-mint);
+}
+.canopy-target progress::-webkit-progress-bar { background: #2c4938; }
+.canopy-target progress::-webkit-progress-value { background: var(--grove-mint); }
+.canopy-target progress::-moz-progress-bar { background: var(--grove-mint); }
+
+.canopy-playfield {
+  position: relative;
+  min-width: 0;
+  border-radius: 1rem;
+  isolation: isolate;
+}
+.canopy-grid {
+  display: grid;
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  gap: clamp(.16rem, .85vw, .37rem);
+  width: 100%;
+  aspect-ratio: 1;
+  padding: clamp(.3rem, 1.55vw, .68rem);
+  overflow: hidden;
+  border: 1px solid var(--grove-line);
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 60% 10%, #214a355e, transparent 70%), var(--grove-bg);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.canopy-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 0;
+  gap: inherit;
+}
+.canopy-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #e7edd51a;
+  border-radius: clamp(.24rem, 1.45vw, .57rem);
+  background: linear-gradient(150deg, var(--grove-cell), #1a3326);
+  color: var(--grove-color);
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition: border-color 110ms ease, background 140ms ease;
+}
+.canopy-tile.canopy-moss {
+  border: 2px dashed #c0dc8a;
+  background: radial-gradient(circle, #5f8e4078 1.1px, transparent 1.5px) 0 0 / 7px 7px, var(--grove-cell);
+}
+.canopy-tile.canopy-moss::after {
+  content: '';
+  position: absolute;
+  bottom: 7%;
+  right: 8%;
+  width: 17%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #d4e8a7;
+  opacity: .86;
+}
+.canopy-tile[aria-selected="true"] {
+  border-color: #eaf1ce;
+  background: #3c5940;
+  outline: 1px solid #eaf1ce;
+  outline-offset: -2px;
+}
+.canopy-tile:focus-visible {
+  z-index: 1;
+  outline: 2px solid #f7ce88;
+  outline-offset: 0;
+}
+.canopy-tile.canopy-hint {
+  border-color: #edcd7d;
+  box-shadow: inset 0 0 0 1px #edcd7d, inset 0 0 .75rem #eec06e50;
+  animation: canopy-hint-pulse .9s ease-in-out 2 alternate;
+}
+.canopy-tile.canopy-clear { background: #b7e58d4a; }
+.canopy-tile.canopy-clear .canopy-glyph { animation: canopy-pop 178ms ease-in both; }
+.canopy-tile.canopy-drop .canopy-glyph { animation: canopy-drop 170ms cubic-bezier(.2, .8, .3, 1) both; }
+
+.canopy [data-kind="0"] { --grove-color: #b8e479; --grove-dark: #62974a; --grove-cell: #2b4b34; }
+.canopy [data-kind="1"] { --grove-color: #88d6d5; --grove-dark: #4e9eac; --grove-cell: #254746; }
+.canopy [data-kind="2"] { --grove-color: #f4ce79; --grove-dark: #df944d; --grove-cell: #47482c; }
+.canopy [data-kind="3"] { --grove-color: #f0a6ac; --grove-dark: #c8718d; --grove-cell: #473d40; }
+.canopy [data-kind="4"] { --grove-color: #ebae73; --grove-dark: #bc7750; --grove-cell: #493e31; }
+.canopy [data-kind="5"] { --grove-color: #d0b6eb; --grove-dark: #8e79bc; --grove-cell: #393c4b; }
+
+.canopy-glyph {
+  position: relative;
+  display: block;
+  width: 57%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 1px #05171050);
+}
+.canopy-glyph::before,
+.canopy-glyph::after {
+  content: '';
+  position: absolute;
+  display: block;
+}
+.canopy [data-kind="0"] .canopy-glyph::before {
+  inset: 4% 10% 11% 6%;
+  border-radius: 84% 12% 84% 18%;
+  background: linear-gradient(142deg, var(--grove-color) 38%, var(--grove-dark));
+  transform: rotate(-9deg);
+}
+.canopy [data-kind="0"] .canopy-glyph::after {
+  inset: 47% 24% 46% 13%;
+  border-radius: 50%;
+  background: #40723c;
+  transform: rotate(-43deg);
+}
+.canopy [data-kind="1"] .canopy-glyph::before {
+  inset: 10% 13%;
+  border-radius: 58% 52% 52% 14%;
+  background: linear-gradient(135deg, var(--grove-color) 42%, var(--grove-dark));
+  transform: rotate(135deg);
+}
+.canopy [data-kind="1"] .canopy-glyph::after {
+  inset: 53% 25% 26% 58%;
+  border-radius: 50%;
+  background: #d6ffff86;
+  transform: rotate(-29deg);
+}
+.canopy [data-kind="2"] .canopy-glyph::before {
+  inset: 1%;
+  background: linear-gradient(140deg, var(--grove-color) 38%, var(--grove-dark));
+  clip-path: polygon(50% 0%, 63% 23%, 88% 13%, 83% 38%, 100% 50%, 82% 65%, 88% 88%, 65% 83%, 50% 100%, 36% 80%, 12% 88%, 17% 63%, 0% 50%, 17% 36%, 12% 12%, 36% 18%);
+}
+.canopy [data-kind="2"] .canopy-glyph::after {
+  inset: 29%;
+  border: 1px solid #fff3be80;
+  border-radius: 50%;
+  background: #ffdf8a;
+}
+.canopy [data-kind="3"] .canopy-glyph::before {
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 22%, var(--grove-color) 18%, transparent 20%),
+    radial-gradient(circle at 75% 40%, var(--grove-color) 18%, transparent 20%),
+    radial-gradient(circle at 67% 69%, var(--grove-dark) 19%, transparent 21%),
+    radial-gradient(circle at 33% 69%, var(--grove-dark) 19%, transparent 21%),
+    radial-gradient(circle at 25% 40%, var(--grove-color) 18%, transparent 20%),
+    radial-gradient(circle at 50% 50%, var(--grove-color) 30%, transparent 32%);
+}
+.canopy [data-kind="3"] .canopy-glyph::after {
+  inset: 39%;
+  border-radius: 50%;
+  background: #ffe2aa;
+}
+.canopy [data-kind="4"] .canopy-glyph::before {
+  inset: 1% 18%;
+  border-radius: 48% 62% 48% 41%;
+  background: linear-gradient(145deg, var(--grove-color) 42%, var(--grove-dark));
+  transform: rotate(31deg);
+}
+.canopy [data-kind="4"] .canopy-glyph::after {
+  inset: 16% 38% 59% 49%;
+  border-radius: 50%;
+  background: #ffdec57d;
+  transform: rotate(39deg);
+}
+.canopy [data-kind="5"] .canopy-glyph::before {
+  inset: 0 5%;
+  background: linear-gradient(126deg, var(--grove-color) 38%, var(--grove-dark));
+  clip-path: polygon(50% 0, 91% 26%, 96% 70%, 54% 100%, 10% 73%, 6% 30%);
+}
+.canopy [data-kind="5"] .canopy-glyph::after {
+  inset: 5% 33% 30% 15%;
+  background: #f1dbff65;
+  clip-path: polygon(70% 0, 91% 53%, 1% 100%, 13% 42%);
+}
+
+.canopy-actions { min-width: 0; }
+.canopy-message {
+  min-height: 1.4em;
+  margin: 0 0 .5rem;
+  color: #f2d294;
+  font-size: .825rem;
+  line-height: 1.4;
+}
+.canopy-message:empty { display: none; }
+.canopy-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.canopy-buttons button {
+  min-height: 2.75rem;
+  padding: .45rem .72rem;
+  border: 1px solid var(--grove-line);
+  border-radius: .65rem;
+  background: #1b3a2a;
+  color: var(--grove-ink);
+  font-size: .81rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.canopy-buttons .canopy-boost {
+  border-color: transparent;
+  background: var(--grove-mint);
+  color: #122a1d;
+}
+.canopy-buttons button:disabled {
+  border-color: var(--grove-line);
+  background: #1b3a2a;
+  color: var(--grove-muted);
+  opacity: .8;
+}
+.canopy-how {
+  margin-top: .58rem;
+  font-size: .77rem;
+}
+
+.canopy-result {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: .85rem;
+  border-radius: inherit;
+  background: #07170feb;
+  text-align: center;
+}
+.canopy-result-inner {
+  display: grid;
+  justify-items: center;
+  gap: .58rem;
+}
+.canopy-reward {
+  width: clamp(3.6rem, 16vw, 6rem);
+  height: clamp(3.6rem, 16vw, 6rem);
+  object-fit: contain;
+  filter: drop-shadow(0 .25rem .5rem #0005);
+}
+.canopy-result h3 {
+  margin: 0;
+  color: var(--grove-ink);
+  font-size: clamp(1.22rem, 6vw, 2rem);
+  letter-spacing: -.04em;
+  line-height: 1.2;
+}
+.canopy-result p { margin: 0; color: var(--grove-muted); }
+.canopy-result .canopy-buttons { justify-content: center; }
+
+@keyframes canopy-pop {
+  0% { transform: scale(1); opacity: 1; }
+  32% { transform: scale(1.34); opacity: 1; }
+  100% { transform: scale(.28); opacity: 0; }
+}
+@keyframes canopy-drop {
+  0% { transform: translateY(-14%); opacity: .7; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes canopy-hint-pulse {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.47); }
+}
+
+@media (min-width: 42rem) {
+  .canopy-layout {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(10rem, .37fr);
+    gap: 1rem 1.25rem;
+  }
+  .canopy-playfield { grid-area: 1 / 1 / span 2 / 2; }
+  .canopy-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .85rem;
+    padding-block-start: .5rem;
+  }
+  .canopy-target { grid-column: span 2; }
+  .canopy-counter { justify-items: start; }
+  .canopy-actions { grid-column: 2; align-self: end; }
+}
+@media (hover: hover) {
+  .canopy-tile:hover { border-color: #d4e5c18c; }
+  .canopy-buttons button:not(:disabled):hover { filter: brightness(1.13); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canopy *, .canopy *::before, .canopy *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
