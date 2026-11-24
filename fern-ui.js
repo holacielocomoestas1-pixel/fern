@@ -14,9 +14,28 @@ Object.assign(I18N.th, {
   mockTitle: 'สอบจำลองเต็มรูปแบบ',
   mockShort: 'สอบจำลอง',
   mockStart: 'เริ่มสอบจำลอง',
-  moreTitle: 'แผนและคู่มือ',
+  moreTitle: 'โปรไฟล์ของฉัน',
   tabQuiz: 'ฝึกข้อสอบ',
-  tabMore: 'แผน',
+  tabMore: 'โปรไฟล์',
+  profileExam: 'สอบตำรวจชั้นประทวน · สายอำนวยการ (อก.1)',
+  editProfile: '✎ แก้ไขโปรไฟล์',
+  levelWord: 'เลเวล',
+  statLessons: 'บทเรียน',
+  statMocks: 'สอบจำลอง',
+  statBadges: 'เหรียญ',
+  statDays: 'วัน',
+  myProgress: 'ความก้าวหน้าของฉัน',
+  myPlanSec: 'แผนของฉัน',
+  guideHelpSec: 'คู่มือและความช่วยเหลือ',
+  noDateYet: 'ยังไม่ตั้งวันสอบ',
+  tapPickDate: 'แตะเพื่อเลือกวันที่',
+  bestScore: 'ดีที่สุด',
+  noMockYet: 'ยังไม่เคยสอบ',
+  editNameTitle: 'ชื่อของคุณ',
+  yourNamePh: 'ชื่อที่อยากให้เรียก',
+  saveBtn: 'บันทึก',
+  cancelBtn: 'ยกเลิก',
+  pickAvatar: 'เลือกตัวการ์ตูน',
   planSubtitle: 'วางแผนตามวันสอบของคุณ',
   practiceBySubject: 'ฝึกตามวิชา',
   statStreak: 'วันต่อเนื่อง',
@@ -50,9 +69,28 @@ Object.assign(I18N.en, {
   mockTitle: 'Full mock exam',
   mockShort: 'Mock exam',
   mockStart: 'Start mock exam',
-  moreTitle: 'Plan and guide',
+  moreTitle: 'My profile',
   tabQuiz: 'Practice',
-  tabMore: 'Plan',
+  tabMore: 'Profile',
+  profileExam: 'Thai Police NCO Exam · Administration Line (อก.1)',
+  editProfile: '✎ Edit profile',
+  levelWord: 'Level',
+  statLessons: 'Lessons',
+  statMocks: 'Mock exams',
+  statBadges: 'Badges',
+  statDays: 'days',
+  myProgress: 'My progress',
+  myPlanSec: 'My plan',
+  guideHelpSec: 'Guide & help',
+  noDateYet: 'No exam date set',
+  tapPickDate: 'Tap to pick a date',
+  bestScore: 'Best',
+  noMockYet: 'No mock yet',
+  editNameTitle: 'Your name',
+  yourNamePh: 'Name to show on your profile',
+  saveBtn: 'Save',
+  cancelBtn: 'Cancel',
+  pickAvatar: 'Pick your buddy',
   planSubtitle: 'Build a plan around your exam date.',
   practiceBySubject: 'Practise by subject',
   statStreak: 'streak days',
@@ -397,6 +435,7 @@ function renderFC() {
 
 function renderExamDate() {
   const box = document.getElementById('exam-date-box');
+  if (!box) return;
   const saved = LS.get('exam-date', '');
   const days = daysLeft();
   const note = days > 0 ? (LANG === 'en' ? `${days} days until your exam` : `เหลืออีก ${days} วันถึงวันสอบ`)
@@ -404,9 +443,11 @@ function renderExamDate() {
   const date = new Date(typeof saved === 'string' && saved ? saved + 'T12:00:00' : NaN);
   const shownDate = Number.isNaN(date.getTime()) ? t('datePlaceholder')
     : new Intl.DateTimeFormat(LANG, { dateStyle: 'medium' }).format(date);
-  box.innerHTML = `<div class="date-row"><label for="exam-date-in">${t('dateLabel')} <span class="mut">(${t('optionalLabel')})</span></label>
-    <span class="date-value" aria-hidden="true">${shownDate}</span>
-    <input type="date" class="datepick" id="exam-date-in"></div>${note ? `<p class="date-note">${note}</p>` : ''}`;
+  box.innerHTML = `<div class="plan-bar"><span class="plan-bar__icon" aria-hidden="true">📅</span>
+    <span class="plan-bar__txt"><strong>${t('dateLabel')}</strong><small>${note || t('tapPickDate')}</small></span>
+    <span class="plan-bar__value" aria-hidden="true">${shownDate}</span>
+    <span class="plan-bar__chev" aria-hidden="true">›</span>
+    <input type="date" class="datepick" id="exam-date-in" aria-label="${t('dateLabel')}"></div>`;
   const input = document.getElementById('exam-date-in');
   input.value = typeof saved === 'string' ? saved : '';
   input.onchange = () => {
@@ -417,8 +458,138 @@ function renderExamDate() {
   };
 }
 
+function mascotPose(id, size) {
+  const webp = `assets/webp/${id}.webp`;
+  const hires = size < 90 ? '' : ` srcset="${webp} 1x, assets/webp/${id}@2x.webp 2x"`;
+  return `<img class="mascot-art" src="${fernAsset(webp)}"${hires} width="${size}" height="${size}" style="--mascot-size:${size}px" alt="" decoding="async">`;
+}
+
+function profileName() {
+  const n = LS.get('profile-name', 'Fern');
+  return typeof n === 'string' && n.trim() ? n.trim() : 'Fern';
+}
+
+function profileAvatar() {
+  const a = LS.get('profile-avatar', 'avatar');
+  return typeof a === 'string' && a ? a : 'avatar';
+}
+
+function renderProfile() {
+  const box = document.getElementById('profile-head');
+  if (!box) return;
+  const lvl = level();
+  const xpInLevel = G.xp % 100;
+  const totalLessons = SUBJECTS.reduce((n, s) => n + lessonParts(s.id).length, 0);
+  const hist = LS.get('mock-history', []);
+  const bestMock = hist.length ? Math.max(...hist.map(h => h.total)) : null;
+  const bState = badgeState();
+  const badgesOn = BADGES.filter(badge => {
+    const [metric, amount] = badge[2].split('>=');
+    return bState[metric] >= Number(amount);
+  }).length;
+  const stats = [
+    { ic: '🔥', v: G.streak.n, l: t('statStreak') },
+    { ic: '✦', v: G.xp, l: 'XP' },
+    { ic: '♥', v: G.hearts.n, l: t('statHearts') },
+    { ic: '📖', v: `${G.lessons.length}/${totalLessons}`, l: t('statLessons') },
+    { ic: '🎯', v: hist.length ? `${hist.length} · ${bestMock}/150` : '0', l: t('statMocks') },
+    { ic: '🏅', v: `${badgesOn}/${BADGES.length}`, l: t('statBadges') },
+  ];
+  const progressRows = SUBJECTS.map(subject => {
+    const parts = lessonParts(subject.id);
+    const done = parts.filter((_, i) => G.lessons.includes(lessonKey(subject.id, i))).length;
+    const best = LS.get('quiz-' + subject.id, null);
+    const sub = `${done}/${parts.length} ${t('statLessons')}${best ? ` · ${t('bestScore')} ${best.best}/${QUESTIONS[subject.id].length}` : ''}`;
+    return `<button type="button" class="menu-row" data-progress="${subject.id}">
+      <span class="menu-ic" aria-hidden="true">${subject.icon || ''}</span>
+      <span class="menu-txt"><strong>${esc(subjectTitle(subject))}</strong><small>${sub}</small></span>
+      <span class="menu-chev" aria-hidden="true">›</span></button>`;
+  }).join('');
+  box.innerHTML = `
+    <header class="profile-head">
+      <button type="button" class="profile-avatar" id="avatar-pick" aria-label="${t('pickAvatar')}">
+        <span class="profile-avatar__img">${mascotPose(profileAvatar(), 88)}</span>
+        <span class="profile-avatar__badge" aria-hidden="true">✎</span>
+      </button>
+      <h1 id="more-title" tabindex="-1">${esc(profileName())}</h1>
+      <p class="profile-sub">${t('profileExam')}</p>
+      <button type="button" class="profile-edit" id="edit-name">${t('editProfile')}</button>
+      <span class="profile-pill">${t('levelWord')} ${lvl} · ${G.xp} XP</span>
+      <div class="profile-xpbar" role="progressbar" aria-label="${t('levelWord')} ${lvl}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${xpInLevel}"><i style="width:${xpInLevel}%"></i></div>
+      <p class="profile-xpnote">${xpInLevel} / 100 XP</p>
+    </header>
+    <div class="stat-grid">${stats.map(s => `<div class="stat-cell"><span class="stat-cell__ic" aria-hidden="true">${s.ic}</span><b>${s.v}</b><small>${s.l}</small></div>`).join('')}</div>
+    <div id="exam-date-box"></div>
+    <div class="sec-head"><h2>${t('myProgress')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
+    <div class="menu-group">${progressRows}</div>`;
+  document.getElementById('edit-name').onclick = openEditName;
+  document.getElementById('avatar-pick').onclick = openAvatarPick;
+  for (const row of box.querySelectorAll('[data-progress]')) {
+    row.onclick = () => startQuiz(row.dataset.progress);
+  }
+}
+
+function openEditName() {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<dialog class="modal sheet-modal" aria-labelledby="sheet-name-title">
+    <div class="sheet">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <h2 id="sheet-name-title">${t('editNameTitle')}</h2>
+      <label class="auth-field"><span>${t('editNameTitle')}</span>
+        <input id="name-in" type="text" maxlength="24" value="${esc(profileName())}" placeholder="${t('yourNamePh')}" autocomplete="off"></label>
+      <button type="button" class="btn sheet-submit" id="name-save">${t('saveBtn')}</button>
+      <button type="button" class="btn ghost sheet-cancel" id="name-cancel">${t('cancelBtn')}</button>
+    </div>
+  </dialog>`;
+  const dialog = root.querySelector('dialog');
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  dialog.showModal();
+  const input = document.getElementById('name-in');
+  input.focus();
+  input.select();
+  const save = () => {
+    LS.set('profile-name', input.value.trim() || 'Fern');
+    dialog.close();
+    renderProfile();
+  };
+  document.getElementById('name-save').onclick = save;
+  document.getElementById('name-cancel').onclick = () => dialog.close();
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+  dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+}
+
+const AVATAR_POSES = ['avatar', 'welcome', 'home', 'practice', 'guide', 'goal', 'streak', 'complete'];
+
+function openAvatarPick() {
+  const root = document.getElementById('modal-root');
+  const current = profileAvatar();
+  root.innerHTML = `<dialog class="modal sheet-modal" aria-labelledby="sheet-avatar-title">
+    <div class="sheet">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <h2 id="sheet-avatar-title">${t('pickAvatar')}</h2>
+      <div class="avatar-grid">${AVATAR_POSES.map(id =>
+        `<button type="button" class="avatar-opt${id === current ? ' on' : ''}" data-pose="${id}" aria-pressed="${id === current}">${mascotPose(id, 64)}</button>`).join('')}
+      </div>
+      <button type="button" class="btn ghost sheet-cancel" id="avatar-cancel">${t('cancelBtn')}</button>
+    </div>
+  </dialog>`;
+  const dialog = root.querySelector('dialog');
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  dialog.showModal();
+  for (const opt of dialog.querySelectorAll('[data-pose]')) {
+    opt.onclick = () => {
+      LS.set('profile-avatar', opt.dataset.pose);
+      dialog.close();
+      renderProfile();
+    };
+  }
+  document.getElementById('avatar-cancel').onclick = () => dialog.close();
+  dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+}
+
 function organizePlan(content) {
-  const [plan, ...sections] = [...content.children];
+  const cards = [...content.children].filter(el => el.classList.contains('card'));
+  const [plan, ...sections] = cards;
   if (!plan) return;
   for (const section of sections) {
     const heading = section.querySelector('.big');
@@ -466,8 +637,7 @@ function bootFern() {
   for (const [id, size, mood] of [
     ['logo-mascot', 36, 'avatar'], ['hero-mascot', 300, 'welcome'],
     ['learn-mascot', 100, 'practice'], ['practice-mascot', 100, 'guide'],
-    ['cards-mascot', 100, 'practice'], ['mock-mascot', 100, 'goal'],
-    ['plan-mascot', 100, 'streak']
+    ['cards-mascot', 100, 'practice'], ['mock-mascot', 100, 'goal']
   ]) {
     document.getElementById(id).innerHTML = mascotArt(size, mood);
   }
