@@ -5,6 +5,8 @@ Object.assign(I18N.th, {
   resumePath: 'เรียนต่อ',
   nextLesson: 'บทเรียนถัดไป',
   lessonPosition: 'บทที่ {current} จาก {total}',
+  examIn: 'สอบในอีก',
+  examToday: 'สอบวันนี้! สู้ ๆ',
   pathCompleteTitle: 'เรียนจบครบทุกบทแล้ว',
   pathTitle: 'เส้นทางการเรียน',
   learnTitle: 'บทเรียน',
@@ -65,6 +67,8 @@ Object.assign(I18N.en, {
   resumePath: 'Continue lesson',
   nextLesson: 'Next lesson',
   lessonPosition: 'Lesson {current} of {total}',
+  examIn: 'Exam in',
+  examToday: 'Exam day today! Good luck!',
   pathCompleteTitle: 'Study path complete',
   pathTitle: 'Study path',
   learnTitle: 'Lessons',
@@ -282,6 +286,19 @@ function renderPath() {
   position.textContent = next
     ? t('lessonPosition').replace('{current}', next.index + 1).replace('{total}', next.total)
     : '';
+
+  const countEl = document.getElementById('hero-count');
+  const dl = daysLeft();
+  if (dl !== null && dl > 0) {
+    countEl.hidden = false;
+    countEl.textContent = `📅 ${t('examIn')} ${dl} ${t('days')}`;
+  } else if (dl === 0) {
+    countEl.hidden = false;
+    countEl.textContent = `📅 ${t('examToday')}`;
+  } else {
+    countEl.hidden = true;
+    countEl.textContent = '';
+  }
 
   const resume = document.getElementById('resume-lesson');
   resume.textContent = t(next ? (G.lessons.length ? 'resumePath' : 'continuePath') : 'courseComplete');

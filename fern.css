@@ -94,6 +94,7 @@ h1 { font-size: clamp(39px, 6.45vw, 73px); line-height: 1.04; font-weight: 730; 
 html[lang="th"] h1 { letter-spacing: -.035em; line-height: 1.16; }
 h1[tabindex]:focus { outline: none; }
 .hero-note { color: var(--mut); margin: 7px 0 18px; line-height: 1.5; font-size: 16px; }
+.hero-count { color: var(--green); font-size: 15.5px; font-weight: 700; margin: -8px 0 18px; }
 .hero-art { grid-area: art; position: relative; min-width: 0; margin-block-start: -12px; }
 .hero-art img { display: block; width: 100%; height: auto; object-fit: contain; }
 .btn {
@@ -295,6 +296,13 @@ td:last-child { text-align: end; }
 input:not([type="date"]) {
   min-height: 44px; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--track); padding: 5px 0;
 }
+input.blank {
+  width: 100%; min-height: 54px; padding: 12px 16px; margin: 6px 0 4px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  color: var(--ink); font-size: 17px; box-shadow: var(--shadow-sm);
+}
+input.blank:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px #c9efb91f; }
+.matchgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
 .matchbtn { min-height: 47px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow-sm); }
 .matchbtn.sel, .matchbtn.done { color: var(--green); background: var(--soft); border-color: var(--green); }
 .matchbtn.done { opacity: .68; }
@@ -309,6 +317,7 @@ input:not([type="date"]) {
 .fc:active { transform: scale(.99); }
 .fc .q, .fc .a { font-size: clamp(20px, 5vw, 36px); font-weight: 690; letter-spacing: -.03em; line-height: 1.38; margin: 10px 0; }
 .fc .meta, .fc .hint { color: var(--mut); font-size: 14px; }
+#fc-box .chip { flex: 1 1 40%; text-align: center; }
 #fc-box .chiprow { margin-top: 9px; }
 .datepick {
   position: absolute; inset: 0; background: transparent; border: 0; opacity: 0;
