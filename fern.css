@@ -77,14 +77,14 @@ img { vertical-align: middle; }
 }
 body.ready .topbar { position: sticky; }
 .hud {
-  width: min(var(--measure), calc(100% - max(var(--gutter), env(safe-area-inset-left)) - max(var(--gutter), env(safe-area-inset-right)) - 24px));
+  /* v4.4: SIN contenedor — el logo y los idiomas flotan nativos sobre el
+     fondo, alineados con los bordes del contenido. Nada de píldora. */
+  width: min(var(--measure), calc(100% - max(var(--gutter), env(safe-area-inset-left)) - max(var(--gutter), env(safe-area-inset-right))));
   min-height: 62px; margin: 10px auto 0;
   display: flex; justify-content: space-between; align-items: center; gap: 16px;
-  padding: 0 18px;
-  background: var(--glass-strong);
-  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border); border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 10px 28px rgba(0, 0, 0, .35);
+  padding: 0;
+  background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 .logo {
   min-height: 44px; display: inline-flex; align-items: center;
@@ -201,6 +201,7 @@ h1[tabindex]:focus { outline: none; }
 .path, .native-list { display: grid; gap: 10px; }
 .path details, .native-list details {
   background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+  border-top: 3px solid var(--subj, var(--line));
   box-shadow: var(--shadow-sm); overflow: hidden;
 }
 .path summary, .native-list summary, .plain-details > summary {
@@ -218,13 +219,23 @@ summary::after {
 details[open] > summary::after { transform: translateY(2px) rotate(225deg); }
 .subj-ic {
   flex: 0 0 42px; width: 42px; height: 42px; display: grid; place-items: center;
-  border-radius: 13px; background: var(--green-soft); font-size: 21px;
+  border-radius: 13px; background: var(--green-soft);
+  background: color-mix(in srgb, var(--subj, #58cc02) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--subj, #58cc02) 30%, transparent);
+  font-size: 21px;
 }
 .mini-bar { display: block; height: 5px; background: var(--track); border-radius: 9px; overflow: hidden; margin-top: 5px; }
-.mini-bar i { display: block; height: 100%; background: var(--green); border-radius: inherit; }
+.mini-bar i { display: block; height: 100%; background: var(--subj, var(--green)); border-radius: inherit; }
 .summary-title { display: grid; min-width: 0; gap: 1px; }
 .summary-title small, .utility-row small { font-size: 13px; color: var(--mut); font-weight: 460; }
 .completion-count { color: var(--mut); font-size: 13px; font-variant-numeric: tabular-nums; margin-inline-start: auto; white-space: nowrap; }
+.completion-count.is-done { background: var(--green); color: var(--button-ink); font-weight: 700; padding: 4px 9px; border-radius: 999px; }
+/* v4.4: franja de progreso general de Lessons. */
+.learn-progress { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 15px 16px 16px; box-shadow: var(--shadow-sm); }
+.learn-progress-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; font-size: 14px; color: var(--mut); }
+.learn-progress-top b { font-size: 26px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.learn-progress-pct { margin-inline-start: auto; font-size: 15px; font-weight: 750; color: var(--green); font-variant-numeric: tabular-nums; }
+.learn-progress .bar { height: 8px; }
 .lesson-rows { margin: 0; padding: 0 12px 12px; list-style: none; display: grid; gap: 8px; }
 .lesson-row {
   width: 100%; min-height: 52px; background: var(--soft); border: 1px solid var(--line);
@@ -234,6 +245,7 @@ details[open] > summary::after { transform: translateY(2px) rotate(225deg); }
 }
 .lesson-row::before { content: '📖'; font-size: 17px; flex: 0 0 auto; }
 .lesson-row[aria-disabled="true"]::before { content: '🔒'; }
+.lesson-row.is-done::before { content: '✓'; color: var(--green); font-weight: 800; }
 .lesson-row:active { transform: scale(.985); }
 .lesson-row b { font-weight: 670; }
 .lesson-row span[data-status] {
@@ -250,16 +262,34 @@ details[open] > summary::after { transform: translateY(2px) rotate(225deg); }
   display: flex; align-items: center; gap: 12px; text-align: start;
   font-size: 15px; color: var(--ink); box-shadow: var(--shadow-sm);
 }
-.subject-row::after, .utility-row::after {
+.subject-row { border-top: 3px solid var(--subj, var(--line)); }
+.subject-row::after {
   content: ''; position: absolute; width: 9px; height: 9px; right: 16px; top: 50%;
   border-bottom: 2px solid var(--green); border-right: 2px solid var(--green);
   transform: translateY(-50%) rotate(-45deg);
 }
 .subject-row:active, .utility-row:active { transform: scale(.985); background: var(--soft); }
 .subject-row b, .utility-row b { font-weight: 670; }
-.subject-row .mut, .utility-row .mut, .utility-row .quiet-count { margin-inline-start: auto; }
+.subject-row .mut { margin-inline-start: auto; }
 .utility-row small, .subject-row small { display: block; }
-.utility-list { margin-bottom: 22px; display: grid; gap: 10px; }
+.score-pill {
+  font-size: 12px; font-weight: 700; white-space: nowrap; padding: 4px 9px;
+  border-radius: 999px; background: var(--green-soft); color: var(--green);
+  border: 1px solid var(--line); font-variant-numeric: tabular-nums;
+}
+/* v4.4: Practice — tarjetas visuales 2×2 con icono grande. */
+.utility-list { margin-bottom: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.utility-row { flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px 14px; min-height: 128px; }
+.utility-row::after { display: none; }
+.utility-row .quiet-count { margin-inline-start: 0; }
+.util-ic {
+  width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto;
+  border-radius: 14px; background: var(--green-soft); font-size: 24px;
+}
+.util-ic.daily { background: rgba(255, 150, 0, .18); }
+.util-ic.mistakes { background: rgba(255, 75, 75, .16); }
+.util-ic.extra { background: rgba(165, 96, 232, .18); }
+.util-ic.mock { background: rgba(201, 239, 185, .16); }
 #quiz-list { display: grid; gap: 10px; }
 
 .inner-view { max-width: 720px; margin-inline: auto; }

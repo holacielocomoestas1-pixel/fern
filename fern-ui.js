@@ -240,6 +240,9 @@ function renderHUD() {
   for (const el of document.querySelectorAll('.quiz-hearts-n')) el.textContent = G.hearts.n;
 }
 
+// v4.4: color propio de cada materia (mismo mapa que usa el simulacro).
+const subjColor = id => (typeof SUBJ_COLOR !== 'undefined' && SUBJ_COLOR[id] ? SUBJ_COLOR[id][0] : '#58cc02');
+
 function renderPath() {
   let previous = null;
   let count = 0;
@@ -269,9 +272,10 @@ function renderPath() {
     const { subject, lessons } = unit;
     const complete = lessons.filter(lesson => lesson.complete).length;
     const pct = lessons.length ? Math.round(complete / lessons.length * 100) : 0;
-    return `<details data-unit="${subject.id}" ${expanded ? 'open' : ''}>
+    const allDone = lessons.length > 0 && complete === lessons.length;
+    return `<details data-unit="${subject.id}" style="--subj:${subjColor(subject.id)}" ${expanded ? 'open' : ''}>
       <summary><span class="subj-ic" aria-hidden="true">${subject.icon || ''}</span><span class="summary-title">${esc(subjectTitle(subject))}<small>${QUESTIONS[subject.id].length} ${t('qs')}</small><span class="mini-bar" aria-hidden="true"><i style="width:${pct}%"></i></span></span>
-       <span class="completion-count">${complete}/${lessons.length}</span></summary>
+       <span class="completion-count${allDone ? ' is-done' : ''}">${allDone ? '✓ ' : ''}${complete}/${lessons.length}</span></summary>
       <ul class="lesson-rows">${rows}</ul>
     </details>`;
   };
@@ -279,7 +283,7 @@ function renderPath() {
     const locked = enforceOrder && !lesson.unlocked;
     const status = lesson.complete ? 'done' : locked ? 'locked' : 'ready';
     const label = t(lesson.complete ? 'completedLabel' : locked ? 'lockedLabel' : 'availableLabel');
-    return `<li><button type="button" class="lesson-row" data-lesson="${subject.id}:${lesson.index}" ${locked ? 'aria-disabled="true"' : ''}>
+    return `<li><button type="button" class="lesson-row${lesson.complete ? ' is-done' : locked ? ' is-locked' : ''}" data-lesson="${subject.id}:${lesson.index}" ${locked ? 'aria-disabled="true"' : ''}>
       <b>${t('lessonLabel')} ${lesson.index + 1}</b><span data-status="${status}">${label}</span></button></li>`;
   };
   path.innerHTML = units.map(unit => {
@@ -288,15 +292,19 @@ function renderPath() {
       <b>${t('quizTitle')}</b><span class="mut">${QUESTIONS[unit.subject.id].length} ${t('qs')}</span></button></li>`;
     return unitSummary(unit, open.has(unit.subject.id), rows + practice);
   }).join('');
-  lessonList.innerHTML = units.map(unit => unitSummary(
+  // v4.4: franja de progreso general encima de la lista de materias.
+  const doneLessons = G.lessons.length;
+  const totalPct = count ? Math.round(doneLessons / count * 100) : 0;
+  const progressStrip = `<div class="learn-progress"><div class="learn-progress-top"><span><b>${doneLessons}/${count}</b> ${t('lessonsDone')}</span><span class="learn-progress-pct">${totalPct}%</span></div><span class="bar" aria-hidden="true"><i style="width:${totalPct}%"></i></span></div>`;
+  lessonList.innerHTML = progressStrip + units.map(unit => unitSummary(
     unit, learnOpen.has(unit.subject.id), unit.lessons.map(lesson => lessonRow(unit.subject, lesson, false)).join('')
   )).join('');
   document.getElementById('quiz-list').innerHTML = units.map(({ subject }) => {
     const best = LS.get('quiz-' + subject.id, null);
     const total = QUESTIONS[subject.id].length;
-    const score = best ? ` · ${t('score')} ${best.best}/${total}` : '';
-    return `<button type="button" class="subject-row" data-practice="${subject.id}">
-      <span class="subj-ic" aria-hidden="true">${subject.icon || ''}</span><b>${esc(subjectTitle(subject))}</b><span class="mut">${total} ${t('qs')}${score}</span></button>`;
+    const score = best ? `<span class="score-pill">${t('score')} ${best.best}/${total}</span>` : '';
+    return `<button type="button" class="subject-row" data-practice="${subject.id}" style="--subj:${subjColor(subject.id)}">
+      <span class="subj-ic" aria-hidden="true">${subject.icon || ''}</span><b>${esc(subjectTitle(subject))}</b><span class="mut">${total} ${t('qs')}</span>${score}</button>`;
   }).join('');
 
   for (const button of document.querySelectorAll('[data-lesson]')) {

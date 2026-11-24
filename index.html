@@ -121,10 +121,10 @@
           <span id="practice-mascot" class="screen-mascot"></span>
         </div>
         <div class="utility-list">
-          <button class="utility-row" type="button" onclick="startDaily()"><b data-i18n="dailyBtn">ชาเลนจ์วันนี้</b><span class="mut">10 <span data-i18n="qs">ข้อ</span></span></button>
-          <button class="utility-row" type="button" onclick="startMistakes()"><b data-i18n="mistakeBtn">ทบทวนข้อที่ผิด</b><span class="quiet-count" id="mistake-n2">0</span></button>
-          <button class="utility-row" type="button" onclick="startExtra()"><span><b data-i18n="extraTitle">แบบฝึกพิเศษ</b><small data-i18n="extraSub"></small></span></button>
-          <button class="utility-row" type="button" onclick="go('mock')"><b data-i18n="mockShort">สอบจำลอง</b><span class="mut">150 <span data-i18n="qs">ข้อ</span></span></button>
+          <button class="utility-row" type="button" onclick="startDaily()"><span class="util-ic daily" aria-hidden="true">🔥</span><span><b data-i18n="dailyBtn">ชาเลนจ์วันนี้</b><small>10 <span data-i18n="qs">ข้อ</span></small></span></button>
+          <button class="utility-row" type="button" onclick="startMistakes()"><span class="util-ic mistakes" aria-hidden="true">🎯</span><span><b data-i18n="mistakeBtn">ทบทวนข้อที่ผิด</b><small><span class="quiet-count" id="mistake-n2">0</span> <span data-i18n="qs">ข้อ</span></small></span></button>
+          <button class="utility-row" type="button" onclick="startExtra()"><span class="util-ic extra" aria-hidden="true">🎲</span><span><b data-i18n="extraTitle">แบบฝึกพิเศษ</b><small data-i18n="extraSub"></small></span></button>
+          <button class="utility-row" type="button" onclick="go('mock')"><span class="util-ic mock" aria-hidden="true">🏆</span><span><b data-i18n="mockShort">สอบจำลอง</b><small>150 <span data-i18n="qs">ข้อ</span> · 180 <span data-i18n="mins">นาที</span></small></span></button>
         </div>
         <h2 class="subheading" data-i18n="practiceBySubject">ฝึกตามวิชา</h2>
         <div id="quiz-list"></div>

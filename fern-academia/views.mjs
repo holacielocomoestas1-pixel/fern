@@ -1,5 +1,8 @@
 import { SUBJECTS, EXAM_SOURCE, daysUntil, productDate, subjectStats, dateStreak } from "./core.mjs";
 
+// v4.4: color propio de cada materia (misma paleta que la app principal).
+const SUBJ_COLORS = { general: "#ff9600", thai: "#ff4b8f", it: "#1cb0f6", saraban: "#a560e8", law: "#ff4b4b", english: "#58cc02" };
+
 export const ICONS = {
   home: '<path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-7h6v7"/>',
   book: '<path d="M12 6a8 8 0 0 0-8-2H3v15h1a8 8 0 0 1 8 2 8 8 0 0 1 8-2h1V4h-1a8 8 0 0 0-8 2zM12 6v15"/>',
@@ -63,8 +66,9 @@ function heading(title, note = "", eyebrow = "") {
   return `<div class="intro">${eyebrow ? `<p class="eyebrow">${eyebrow}</p>` : ""}<h1>${title}</h1>${note ? `<p class="lead">${note}</p>` : ""}</div>`;
 }
 
-function row({ href, label, note = "", glyph = "", data = "" }) {
-  return `<a class="row" href="${esc(href)}">${glyph ? icon(glyph) : ""}<span class="row-main"><span class="row-title">${label}</span>${note ? `<span class="row-note">${note}</span>` : ""}</span>${data ? `<span class="row-data">${data}</span>` : ""}${icon("next")}</a>`;
+function row({ href, label, note = "", glyph = "", data = "", color = "" }) {
+  const ic = glyph ? (color ? `<span class="row-icon" style="--rowc:${color}">${icon(glyph)}</span>` : icon(glyph)) : "";
+  return `<a class="row" href="${esc(href)}">${ic}<span class="row-main"><span class="row-title">${label}</span>${note ? `<span class="row-note">${note}</span>` : ""}</span>${data ? `<span class="row-data">${data}</span>` : ""}${icon("next")}</a>`;
 }
 
 function kpis(items) {
@@ -138,7 +142,7 @@ export function homeView(ctx) {
     </div>
     <details class="sources"><summary>${t("กำหนดวันสอบของคุณ", "Set your exam date")}</summary><form id="exam-form" class="fields"><label class="field field-short">${t("วันสอบ", "Exam date")}<input name="date" type="date" value="${esc(state.examDate)}" max="2099-12-31"></label><button class="act ghost" type="submit">${t("บันทึก", "Save")}</button>${state.examDate ? `<button class="text-button" type="button" data-action="clear-date">${t("ล้างวันที่", "Clear date")}</button>` : ""}</form><p class="subtle">${t("รอบ อก.1 ปี 2569 กำหนดสอบข้อเขียน 29 พฤศจิกายน 2569 ตรวจรายละเอียดของคุณในบัตรสอบ", "The 2569 administration intake lists 29 November 2026 for the written exam. Check your own admission slip.")} <a class="link" href="${EXAM_SOURCE}" target="_blank" rel="noopener noreferrer">${t("ประกาศ", "Notice")}</a></p></details>
   </section>
-  <section class="section"><div class="section-head"><h2>${t("เลือกวิชา", "Pick up a subject")}</h2><a class="link" href="#library">${t("ดูทั้งหมด", "View library")}</a></div><div class="list">${SUBJECTS.map(s => row({ href: `#library/${s.id}`, glyph: s.icon, label: esc(s[lang]), data: n(catalog.subjects[s.id].questions) })).join("")}</div></section>
+  <section class="section"><div class="section-head"><h2>${t("เลือกวิชา", "Pick up a subject")}</h2><a class="link" href="#library">${t("ดูทั้งหมด", "View library")}</a></div><div class="list">${SUBJECTS.map(s => row({ href: `#library/${s.id}`, glyph: s.icon, label: esc(s[lang]), data: n(catalog.subjects[s.id].questions), color: SUBJ_COLORS[s.id] })).join("")}</div></section>
   ${seen ? `<p class="subtle section">${t(`ทำไปแล้ว ${n(seen)} ข้อ`, `You’ve attempted ${n(seen)} different questions.`)}</p>` : ""}
   ${syncLine(ctx)}`;
 }
@@ -156,7 +160,7 @@ export function libraryView(ctx, id) {
       ? t(`${n(lessons.length)} บท · ${n(catalog.subjects[id].questions)} ข้อฝึก`, `${n(lessons.length)} chapters · ${n(catalog.subjects[id].questions)} practice questions`)
       : t("อ่านเนื้อหา วิธีคิด และตัวอย่าง ก่อนลงมือทำข้อสอบ", "Read the concepts and worked examples, then try them in practice."))}
     ${id === "saraban" ? `<details class="sources"><summary>${t("ฉบับระเบียบที่ใช้", "Records regulation coverage")}</summary><p>${t("บทเรียนระเบียบตำรวจอิงฉบับรวมทางการถึงตุลาคม 2566 การแก้ไขฉบับที่ 21 อยู่ในสารบัญของกองกฎหมาย", "The police records chapters use the official consolidation through October 2023. The Legal Division index lists amendment 21.")} <a href="https://tsd.police.go.th/index.php/2025/07/18/77827852/" target="_blank" rel="noopener noreferrer">${t("เปิดสารบัญ", "Open index")}</a></p></details>` : ""}
-    ${subject ? `<div class="inline-actions section"><a class="act solid" href="#practice/${id}">${t("ฝึกวิชานี้", "Practise this subject")}</a><a class="act ghost" href="#cards/${id}">${t("แฟลชการ์ด", "Flashcards")}</a></div>` : `<div class="list section">${SUBJECTS.map(s => row({ href: `#library/${s.id}`, label: esc(s[lang]), glyph: s.icon, data: t(`${n(catalog.subjects[s.id].lessons)} บท`, `${n(catalog.subjects[s.id].lessons)} chapters`) })).join("")}</div>`}
+    ${subject ? `<div class="inline-actions section"><a class="act solid" href="#practice/${id}">${t("ฝึกวิชานี้", "Practise this subject")}</a><a class="act ghost" href="#cards/${id}">${t("แฟลชการ์ด", "Flashcards")}</a></div>` : `<div class="list section">${SUBJECTS.map(s => row({ href: `#library/${s.id}`, label: esc(s[lang]), glyph: s.icon, data: t(`${n(catalog.subjects[s.id].lessons)} บท`, `${n(catalog.subjects[s.id].lessons)} chapters`), color: SUBJ_COLORS[s.id] })).join("")}</div>`}
     <section class="section"><h2>${t("ค้นหาบทเรียน", "Find a chapter")}</h2><label class="field fields">${t("คำค้น", "Search chapters")}<input id="chapter-filter" type="search" autocomplete="off" placeholder="${t("เช่น ร้อยละ หรือ Excel", "e.g. percentages or Excel")}"></label>
     <ul class="list plain-list" id="chapter-list">${lessonRows}</ul>
     <p id="search-empty" class="empty" role="status" hidden>${t("ไม่พบบทที่ตรงกับคำค้น", "No matching chapters.")}</p>
@@ -197,15 +201,15 @@ export function practiceView(ctx, args) {
     <label class="field">${t("เลือกข้อจาก", "Question pool")}<select name="pool"><option value="all">${t("คลังคำถาม", "Full question bank")}</option><option value="errors" ${pool === "errors" ? "selected" : ""}>${errorLabel} (${n(counts.errors)})</option><option value="saved" ${pool === "saved" ? "selected" : ""}>${savedLabel} (${n(counts.saved)})</option></select></label>
     <button class="act solid" type="submit">${t("เริ่มฝึก", "Start practice")}</button>
     </form>
-    <div class="section list">${row({ href: "#mock", label: t("สอบจำลองเต็มชุด", "Full timed mock"), note: t("150 ข้อ · 3 ชั่วโมง · 6 วิชา", "150 questions · 3 hours · six subjects"), glyph: "timer" })}
-    ${row({ href: "#interview", label: t("ซ้อมสัมภาษณ์", "Interview practice"), note: t("ฝึกตอบจากสถานการณ์จริง", "Practise common workplace scenarios"), glyph: "text" })}
-    ${row({ href: "#cards", label: t("แฟลชการ์ด", "Flashcards"), glyph: "cards", data: n(catalog.cards.length) })}</div>`;
+    <div class="section list">${row({ href: "#mock", label: t("สอบจำลองเต็มชุด", "Full timed mock"), note: t("150 ข้อ · 3 ชั่วโมง · 6 วิชา", "150 questions · 3 hours · six subjects"), glyph: "timer", color: "#ff9600" })}
+    ${row({ href: "#interview", label: t("ซ้อมสัมภาษณ์", "Interview practice"), note: t("ฝึกตอบจากสถานการณ์จริง", "Practise common workplace scenarios"), glyph: "text", color: "#1cb0f6" })}
+    ${row({ href: "#cards", label: t("แฟลชการ์ด", "Flashcards"), glyph: "cards", data: n(catalog.cards.length), color: "#a560e8" })}</div>`;
 }
 
 export function mockView(ctx) {
   const { t, lang } = ctx;
   return `${heading(t("สอบจำลอง", "Full mock exam"), t("ตอบ 150 ข้อใน 180 นาที สลับข้อได้และดูผลหลังส่ง", "Answer 150 questions in 180 minutes. Move between questions and see your results after submitting."), t("สอบข้อเขียน อก.1", "NCO administration written exam"))}
-    <div class="section list">${SUBJECTS.map(subject => `<div class="row">${icon(subject.icon)}<span class="row-main">${esc(subject[lang])}</span><span class="row-data">${subject.weight}</span></div>`).join("")}</div>
+    <div class="section list">${SUBJECTS.map(subject => `<div class="row"><span class="row-icon" style="--rowc:${SUBJ_COLORS[subject.id]}">${icon(subject.icon)}</span><span class="row-main">${esc(subject[lang])}</span><span class="row-data">${subject.weight}</span></div>`).join("")}</div>
     <p class="subtle section">${t("ชุดฝึกสร้างจากคลังของเฟิร์น ใช้โครงสร้างข้อสอบและแสดงเกณฑ์ 60% แยกสองภาคของข้อเขียน", "Fern draws original questions from its bank using the written-exam blueprint. Scores show the 60% threshold for each of the two written sections.")} <a class="link" href="${EXAM_SOURCE}" target="_blank" rel="noopener noreferrer">${t("ภาคผนวก ฉ", "Annex ฉ")}</a></p>
     <div class="inline-actions section">${ctx.mockSession && !ctx.mockSession.done
       ? `<a class="act solid" href="#session/mock">${t("ทำข้อสอบต่อ", "Resume timed mock")}</a>`

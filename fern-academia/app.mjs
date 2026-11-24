@@ -215,22 +215,31 @@ async function render(resetScroll = true) {
 }
 
 let shelfObserver = null;
+let shelfLockUntil = 0;
 
 // Estante estilo Switch: la portada más visible queda enfocada (anillo +
 // panel de detalle). Al entrar, la primera portada queda centrada.
+// v4.4: el observer con varios umbrales disparaba a cada cruce durante el
+// scroll suave y el foco rebotaba entre portadas (parpadeo). Ahora hay un
+// solo umbral, el foco no se re-aplica si ya está puesto, y durante un
+// scroll programado (toque o teclado) el observer queda bloqueado.
 function initGameShelf() {
   const shelf = document.querySelector(".game-shelf");
   if (!shelf) return;
   const cards = [...shelf.querySelectorAll(".game-card")];
   const focus = id => {
+    const current = cards.find(card => card.classList.contains("on"));
+    if (current && current.dataset.game === id) return;
     cards.forEach(card => card.classList.toggle("on", card.dataset.game === id));
     document.querySelectorAll(".game-detail").forEach(panel => panel.classList.toggle("on", panel.dataset.game === id));
   };
+  const lockShelf = (ms = 700) => { shelfLockUntil = Date.now() + ms; };
   shelfObserver?.disconnect();
   shelfObserver = new IntersectionObserver(entries => {
+    if (Date.now() < shelfLockUntil) return;
     const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
     if (visible) focus(visible.target.dataset.game);
-  }, { root: shelf, threshold: [0.5, 0.75, 1] });
+  }, { root: shelf, threshold: [0.6] });
   cards.forEach(card => shelfObserver.observe(card));
   const first = cards[0];
   if (first) shelf.scrollTo({ left: first.offsetLeft - (shelf.clientWidth - first.clientWidth) / 2 });
@@ -240,9 +249,11 @@ function initGameShelf() {
     const next = cards[Math.min(cards.length - 1, Math.max(0, current + (event.key === "ArrowRight" ? 1 : -1)))];
     if (!next) return;
     event.preventDefault();
+    lockShelf();
     next.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
     next.focus({ preventScroll: true });
   });
+  shelf._lockShelf = lockShelf;
 }
 
 // Animación de lanzamiento: la portada crece hasta llenar la pantalla y
@@ -663,6 +674,9 @@ document.addEventListener("click", event => {
     const id = button.dataset.game;
     if (button.classList.contains("on")) launchGame(button, `#play/${id}/free`);
     else {
+      // v4.4: bloquear el observer mientras dura el scroll suave para que el
+      // foco no rebote entre portadas (parpadeo).
+      document.querySelector(".game-shelf")?._lockShelf?.();
       button.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
       document.querySelectorAll(".game-card").forEach(card => card.classList.toggle("on", card === button));
       document.querySelectorAll(".game-detail").forEach(panel => panel.classList.toggle("on", panel.dataset.game === id));
