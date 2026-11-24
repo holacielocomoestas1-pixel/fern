@@ -726,6 +726,11 @@ function confetti() {
 }
 
 function bootFern() {
+  // La página SIEMPRE arranca arriba del todo: Safari restaura la posición
+  // de scroll al reabrir la pestaña y eso dejaba la cabeza del osito cortada
+  // bajo el header hasta el primer scroll.
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  window.scrollTo(0, 0);
   for (const [id, size, mood] of [
     ['learn-mascot', 100, 'practice'], ['practice-mascot', 100, 'guide'],
     ['cards-mascot', 100, 'practice'], ['mock-mascot', 100, 'goal']
@@ -743,10 +748,14 @@ function bootFern() {
   const ready = load.decode ? load.decode().catch(() => {}) : Promise.resolve();
   Promise.all([ready, new Promise(resolve => setTimeout(resolve, 2000))]).then(() => {
     setTimeout(() => {
+      document.body.classList.add('ready');
       splash.classList.add('hide');
+      window.scrollTo(0, 0);
       setTimeout(() => splash.remove(), 245);
     }, 420);
   });
+  // Respaldo: el header se vuelve fijo aunque el splash se retrase.
+  setTimeout(() => document.body.classList.add('ready'), 3500);
 }
 
 bootFern();
