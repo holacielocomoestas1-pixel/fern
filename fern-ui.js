@@ -171,8 +171,9 @@ function renderPath() {
   const unitSummary = (unit, expanded, rows) => {
     const { subject, lessons } = unit;
     const complete = lessons.filter(lesson => lesson.complete).length;
+    const pct = lessons.length ? Math.round(complete / lessons.length * 100) : 0;
     return `<details data-unit="${subject.id}" ${expanded ? 'open' : ''}>
-      <summary><span class="summary-title">${esc(subjectTitle(subject))}<small>${QUESTIONS[subject.id].length} ${t('qs')}</small></span>
+      <summary><span class="subj-ic" aria-hidden="true">${subject.icon || ''}</span><span class="summary-title">${esc(subjectTitle(subject))}<small>${QUESTIONS[subject.id].length} ${t('qs')}</small><span class="mini-bar" aria-hidden="true"><i style="width:${pct}%"></i></span></span>
        <span class="completion-count">${complete}/${lessons.length}</span></summary>
       <ul class="lesson-rows">${rows}</ul>
     </details>`;
@@ -198,7 +199,7 @@ function renderPath() {
     const total = QUESTIONS[subject.id].length;
     const score = best ? ` · ${t('score')} ${best.best}/${total}` : '';
     return `<button type="button" class="subject-row" data-practice="${subject.id}">
-      <b>${esc(subjectTitle(subject))}</b><span class="mut">${total} ${t('qs')}${score}</span></button>`;
+      <span class="subj-ic" aria-hidden="true">${subject.icon || ''}</span><b>${esc(subjectTitle(subject))}</b><span class="mut">${total} ${t('qs')}${score}</span></button>`;
   }).join('');
 
   for (const button of document.querySelectorAll('[data-lesson]')) {
@@ -474,7 +475,7 @@ function bootFern() {
   const splash = document.getElementById('splash');
   const load = splash.querySelector('img');
   const ready = load.decode ? load.decode().catch(() => {}) : Promise.resolve();
-  Promise.race([ready, new Promise(resolve => setTimeout(resolve, 850))]).then(() => {
+  Promise.all([ready, new Promise(resolve => setTimeout(resolve, 2000))]).then(() => {
     setTimeout(() => {
       splash.classList.add('hide');
       setTimeout(() => splash.remove(), 245);
