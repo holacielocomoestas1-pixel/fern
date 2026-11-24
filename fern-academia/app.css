@@ -167,12 +167,29 @@ progress::-moz-progress-bar { background: var(--mint); }
 .study-card { display: grid; gap: 14px; padding: clamp(18px, 4vw, 30px); margin-block: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 12px 28px rgba(0, 0, 0, .38); }
 .study-card p { white-space: pre-wrap; }
 .study-card .back { color: var(--mint); }
-.game-list { border-top: 1px solid var(--line); margin-top: 24px; }
-.game-row { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; padding: 20px 0; border-bottom: 1px solid var(--line); }
-.game-row .tile { display: inline-grid; place-items: center; grid-row: span 2; width: 48px; height: 48px; border-radius: 13px; background: var(--surface); color: var(--mint); }
-.game-row .tile svg { height: 25px; width: 25px; }
-.game-row .inline-actions { grid-column: 2; }
-.game-row h2 { margin: 0 0 4px; }
+/* Estante de juegos estilo Nintendo Switch: portadas cuadradas con foto;
+   la enfocada crece con anillo verde; las demás se achican y se apagan. */
+.game-shelf { display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 20px 8px 6px; margin-top: 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.game-shelf::-webkit-scrollbar { display: none; }
+.game-card { flex: 0 0 auto; width: min(62vw, 230px); scroll-snap-align: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--text); }
+.game-card-art { display: block; position: relative; aspect-ratio: 1; border-radius: 22px; overflow: hidden; box-shadow: 0 12px 28px rgba(0, 0, 0, .45); transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), box-shadow .3s, filter .3s; }
+.game-card-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.game-card:not(.on) .game-card-art { transform: scale(.86); filter: saturate(.8) brightness(.82); }
+.game-card.on .game-card-art { transform: scale(1); box-shadow: 0 0 0 3px var(--mint), 0 0 0 7px rgba(201, 239, 185, .22), 0 18px 40px rgba(0, 0, 0, .5); }
+.game-card:active .game-card-art { transform: scale(.93); }
+.game-card-name { display: block; margin-top: 12px; font-size: 1.05rem; font-weight: 750; text-align: center; opacity: .5; transition: opacity .2s; }
+.game-card.on .game-card-name { opacity: 1; }
+.shelf-hint { text-align: center; color: var(--muted); font-size: .85rem; margin: 4px 0 0; }
+.game-detail { margin-top: 18px; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 12px 28px rgba(0, 0, 0, .38); }
+.game-detail:not(.on) { display: none; }
+.game-detail.on { animation: detail-in .3s ease; }
+@keyframes detail-in { from { opacity: 0; transform: translateY(6px); } }
+.game-detail h2 { margin: 0 0 4px; }
+.game-detail .lead { margin: 0 0 12px; }
+/* Animación de lanzamiento: la portada crece hasta llenar la pantalla. */
+.game-launch { position: fixed; z-index: 60; overflow: hidden; border-radius: 22px; transition: all .38s cubic-bezier(.32, .72, .35, 1); box-shadow: 0 24px 60px rgba(0, 0, 0, .55); }
+.game-launch img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.game-launch.out { opacity: 0; transition: opacity .25s ease; }
 .game-header { max-width: 720px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: space-between; gap: 5px 12px; flex-wrap: wrap; }
 .game-mount { min-width: 0; width: min(100%, 720px); margin-inline: auto; }
 .game-header .tags { gap: 6px; }
@@ -201,9 +218,7 @@ progress::-moz-progress-bar { background: var(--mint); }
   .hero h1 { font-size: clamp(1.85rem, 7.4vw, 2.6rem); }
   .hero .lead { max-width: 24ch; font-size: .95rem; }
   .hero .solid { margin-top: 14px; }
-  .game-row { gap: 9px 10px; }
-  .game-row .tile { width: 39px; height: 39px; }
-  .game-row .inline-actions { grid-column: 1 / -1; }
+  .game-card { width: min(66vw, 230px); }
   .row { gap: 10px; }
 }
 @media (max-width: 370px) {

@@ -34,11 +34,11 @@ export function icon(name) {
 
 export const GAMES = {
   race: {
-    th: "เฟิร์นแรลลี", en: "Fern Rally", icon: "flag",
+    th: "เฟิร์นแรลลี", en: "Fern Rally", icon: "flag", cover: "assets/games/fern-rally.webp",
     desc: { th: "เข้าโค้ง เก็บบูสต์ แล้วชิงเส้นชัยบนเส้นทางของเฟิร์น", en: "Lean into bends, build boost and race to the finish on Fern’s trails." },
   },
   match: {
-    th: "สวนเฟิร์น", en: "Canopy Grove", icon: "gem",
+    th: "สวนเฟิร์น", en: "Canopy Grove", icon: "gem", cover: "assets/games/canopy-grove.webp",
     desc: { th: "สลับชิ้นส่วนสามชิ้นขึ้นไป ต่อคอมโบและทำเป้าหมายให้สำเร็จ", en: "Match three or more pieces, chain combos and hit the board’s goal." },
   },
 };
@@ -215,10 +215,22 @@ export function cardsView(ctx, id) {
 
 export function gamesView(ctx) {
   const { t, lang, catalog, n, state } = ctx;
+  const ids = Object.keys(GAMES);
+  // Estante estilo Nintendo Switch: portadas cuadradas con foto; la enfocada
+  // crece con anillo. Tocar una portada la enfoca; tocarla enfocada entra
+  // al juego con la animación de lanzamiento (ver launchGame en app.mjs).
   return `${heading(t("ห้องเกม", "Playroom"), t("แวะมาเล่นได้ทุกเวลา เลือกเล่นอิสระหรือให้ข้อฝึกช่วยปลดบูสต์", "Drop in any time. Play freely or earn boosts by answering study questions."))}
-    <div class="game-list">${Object.entries(GAMES).map(([id, game]) =>
-      `<article class="game-row"><span class="tile">${icon(game.icon)}</span><div><h2>${esc(game[lang])}</h2><p class="lead">${esc(game.desc[lang])}</p>${state.gameResults[id]?.free?.runs ? `<p class="subtle">${t("สถิติเล่นอิสระ", "Free play best")} ${n(state.gameResults[id].free.best)}</p>` : ""}</div>
-      <div class="inline-actions"><a class="act solid" href="#play/${id}/free">${t("เล่นอิสระ", "Free play")}</a><a class="act ghost" href="#game/${id}">${t("เล่นพร้อมทบทวน", "Play & study")}</a></div></article>`).join("")}</div>
+    <div class="game-shelf" role="group" aria-label="${t("เลือกเกม", "Choose a game")}">${ids.map((id, i) => {
+      const game = GAMES[id];
+      return `<button type="button" class="game-card${i === 0 ? " on" : ""}" data-action="focus-game" data-game="${id}" aria-label="${esc(game[lang])}"><span class="game-card-art"><img src="${game.cover}" alt="" width="640" height="640" loading="eager"></span><span class="game-card-name">${esc(game[lang])}</span></button>`;
+    }).join("")}</div>
+    <p class="shelf-hint">${t("แตะเกมเพื่อเลือก · แตะอีกครั้งเพื่อเล่น", "Tap a game to select · tap again to play")}</p>
+    ${ids.map((id, i) => {
+      const game = GAMES[id];
+      const best = state.gameResults[id]?.free?.runs ? `<p class="subtle">${t("สถิติเล่นอิสระ", "Free play best")} ${n(state.gameResults[id].free.best)}</p>` : "";
+      return `<section class="game-detail${i === 0 ? " on" : ""}" data-game="${id}"><h2>${esc(game[lang])}</h2><p class="lead">${esc(game.desc[lang])}</p>${best}
+      <div class="inline-actions"><button type="button" class="act solid" data-action="launch-game" data-game="${id}" data-mode="free">${t("เล่นอิสระ", "Free play")}</button><button type="button" class="act ghost" data-action="launch-game" data-game="${id}" data-mode="study">${t("เล่นพร้อมทบทวน", "Play & study")}</button></div></section>`;
+    }).join("")}
     <button class="text-button section" data-action="sound" type="button" aria-pressed="${state.sound}">${state.sound ? t("ปิดเสียงเกม", "Mute game sounds") : t("เปิดเสียงเกม", "Enable game sounds")}</button>
     <p class="subtle">${t(`โหมดทบทวนเลือกจากคลัง ${n(catalog.totals.questions)} ข้อ`, `Study mode draws from the ${n(catalog.totals.questions)}-question bank.`)}</p>`;
 }

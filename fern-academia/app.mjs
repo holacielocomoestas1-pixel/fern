@@ -201,11 +201,62 @@ async function render(resetScroll = true) {
     main.innerHTML = gameView(view, child, mode, subject);
     mountGame(id, child, mode, subject);
   } else main.innerHTML = homeView(view);
+  if (page === "games") initGameShelf();
   if (resetScroll) {
     window.scrollTo(0, 0);
     main.focus({ preventScroll: true });
   }
   sessionClock();
+}
+
+let shelfObserver = null;
+
+// Estante estilo Switch: la portada más visible queda enfocada (anillo +
+// panel de detalle). Al entrar, la primera portada queda centrada.
+function initGameShelf() {
+  const shelf = document.querySelector(".game-shelf");
+  if (!shelf) return;
+  const cards = [...shelf.querySelectorAll(".game-card")];
+  const focus = id => {
+    cards.forEach(card => card.classList.toggle("on", card.dataset.game === id));
+    document.querySelectorAll(".game-detail").forEach(panel => panel.classList.toggle("on", panel.dataset.game === id));
+  };
+  shelfObserver?.disconnect();
+  shelfObserver = new IntersectionObserver(entries => {
+    const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    if (visible) focus(visible.target.dataset.game);
+  }, { root: shelf, threshold: [0.5, 0.75, 1] });
+  cards.forEach(card => shelfObserver.observe(card));
+  const first = cards[0];
+  if (first) shelf.scrollTo({ left: first.offsetLeft - (shelf.clientWidth - first.clientWidth) / 2 });
+  shelf.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const current = cards.findIndex(card => card.classList.contains("on"));
+    const next = cards[Math.min(cards.length - 1, Math.max(0, current + (event.key === "ArrowRight" ? 1 : -1)))];
+    if (!next) return;
+    event.preventDefault();
+    next.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+    next.focus({ preventScroll: true });
+  });
+}
+
+// Animación de lanzamiento: la portada crece hasta llenar la pantalla y
+// luego se navega; el velo se desvanece sobre la vista nueva.
+function launchGame(button, hash) {
+  if (document.querySelector(".game-launch")) return;
+  const art = document.querySelector(`.game-card[data-game="${button.dataset.game}"] .game-card-art`);
+  const rect = (art || button).getBoundingClientRect();
+  const overlay = document.createElement("div");
+  overlay.className = "game-launch";
+  overlay.innerHTML = `<img src="${GAMES[button.dataset.game].cover}" alt="">`;
+  Object.assign(overlay.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    Object.assign(overlay.style, { left: "0", top: "0", width: "100vw", height: "100dvh", borderRadius: "0" });
+  }));
+  setTimeout(() => { location.hash = hash; }, 400);
+  setTimeout(() => overlay.classList.add("out"), 550);
+  setTimeout(() => overlay.remove(), 850);
 }
 
 function updateSession() {
@@ -603,6 +654,17 @@ document.addEventListener("click", event => {
       button.innerHTML = icon(state.sound ? "volume" : "muted");
       unlockAudio();
     } else button.textContent = state.sound ? t("ปิดเสียงเกม", "Mute game sounds") : t("เปิดเสียงเกม", "Enable game sounds");
+  } else if (action === "focus-game") {
+    const id = button.dataset.game;
+    if (button.classList.contains("on")) launchGame(button, `#play/${id}/free`);
+    else {
+      button.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+      document.querySelectorAll(".game-card").forEach(card => card.classList.toggle("on", card === button));
+      document.querySelectorAll(".game-detail").forEach(panel => panel.classList.toggle("on", panel.dataset.game === id));
+    }
+  } else if (action === "launch-game") {
+    const id = button.dataset.game;
+    launchGame(button, button.dataset.mode === "study" ? `#game/${id}` : `#play/${id}/free`);
   } else if (action === "retry") {
     if (catalog) render();
     else boot();
