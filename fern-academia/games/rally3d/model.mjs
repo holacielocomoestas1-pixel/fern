@@ -26,6 +26,9 @@ function makeCar(id, s, offset) {
     roll: 0, boost: 0, drift: false, charge: 0, boostCharge: id === 0 ? .46 : 0,
     lap: 1, finishAt: null, boostingInput: false, friction: 0, contact: 0, airborne: 0,
     driftTime: 0, driftTier: 0, driftSign: 0, drafting: false,
+    // Impact feel: stun cuts thrust after a hit; yawKick/rollKick are decaying
+    // jolts added on top of the smoothed heading/roll so a hit shakes the kart.
+    stun: 0, yawKick: 0, rollKick: 0,
   };
 }
 
@@ -159,6 +162,9 @@ function drivePlayer(run, input, dt) {
   if (previousFriction < .5 && car.friction >= .5) run.events.push({ type: 'offroad' });
   car.boost = Math.max(0, car.boost - dt);
   car.contact = Math.max(0, car.contact - dt);
+  car.stun = Math.max(0, car.stun - dt);
+  car.yawKick = smooth(car.yawKick, 0, dt, 5);
+  car.rollKick = smooth(car.rollKick, 0, dt, 5);
   if (input.boost && !car.boostingInput && car.boostCharge >= TURBO_COST && car.speed > 5) {
     chargeTurbo(run, -TURBO_COST);
     activate(run, car, 2.08, 'manual', 2);
@@ -168,7 +174,7 @@ function drivePlayer(run, input, dt) {
   car.boostingInput = !!input.boost && car.speed > 5;
   applyDrift(run, input, dt, steer, onRoad);
 
-  const maxLateral = (car.drift ? 9.4 : 10.2) * (car.slick ? .49 : car.grip ? 1.08 : 1) * (car.jumpY > .08 ? .72 : 1);
+  const maxLateral = (car.drift ? 9.4 : 10.2) * (car.slick ? .49 : car.grip ? 1.08 : 1) * (car.gum ? .55 : 1) * (car.jumpY > .08 ? .72 : 1);
   const movement = clamp(car.speed / 14, .56, 1.1);
   const grip = Math.abs(steer) > .1 ? .40 : car.drift ? .56 : 1.40;
   const driftPush = car.drift ? car.driftSign * (.78 + Math.abs(f.curve) * 12) : 0;
@@ -182,10 +188,14 @@ function drivePlayer(run, input, dt) {
     // The verge is a wall now, not a cushion: bounce back in, scrub speed,
     // and report the bump once per hit.
     const impact = Math.abs(car.sideSpeed);
+    const impactDir = Math.sign(car.sideSpeed) || 1;
     car.sideSpeed = -car.sideSpeed * .38;
-    car.speed *= impact > 6 ? .985 : .995;
+    car.speed *= impact > 6 ? .94 : .97;
     if (impact > 4 && car.contact <= 0) {
       car.contact = .35;
+      car.stun = Math.max(car.stun, .3);
+      car.yawKick += impactDir * .16;
+      car.rollKick += .12;
       run.events.push({ type: 'bump', strength: Math.min(1, impact / 12) });
     }
   }
@@ -193,6 +203,10 @@ function drivePlayer(run, input, dt) {
   const counter = car.drift ? car.driftSign * -.23 : 0;
   car.yawOffset = smooth(car.yawOffset, Math.atan2(car.sideSpeed, Math.max(9, car.speed)) * .62 + counter + skate * .048, dt, 7.5);
   car.roll = smooth(car.roll, -.085 * steer - .102 * (car.drift ? car.driftSign : 0), dt, 8);
+  // Impact wobble: a decaying kick on top of the smoothed heading/roll, so a
+  // hit visibly shakes the kart without permanently bending its heading.
+  car.yawOffset += car.yawKick;
+  car.roll += car.rollKick;
 
   const draft = run.racers.some(other =>
     other !== car && other.finishAt === null && other.s - car.s > 3.2 && other.s - car.s < 12.6 &&
@@ -205,7 +219,7 @@ function drivePlayer(run, input, dt) {
   const turnPenalty = Math.min(.25, Math.abs(f.curve) * (car.drift ? 2.4 : 4.6) * cornerGrip);
   const brake = clamp(Number(input.brake) || 0, 0, 1);
   const vergeFactor = 1 - car.friction * (car.grip ? .12 : .66);
-  const impaired = car.slow > 0 ? .70 : car.slick > 0 ? .90 : 1;
+  const impaired = car.stun > 0 ? .5 : car.gum > 0 ? .5 : car.slow > 0 ? .70 : car.slick > 0 ? .90 : 1;
   const thrust = car.boost > 0 ? 11.6 + (car.comet ? 2.1 : 0) : 0;
   const targetSpeed = (track.cruise * (1 - turnPenalty) - f.dy * 3.4 + (car.drafting ? 1 : 0) +
     thrust) * (1 - brake * .59) * vergeFactor * impaired;
@@ -225,6 +239,9 @@ function driveRival(run, car, dt) {
   const width = course.halfWidth;
   car.boost = Math.max(0, car.boost - dt);
   car.contact = Math.max(0, car.contact - dt);
+  car.stun = Math.max(0, car.stun - dt);
+  car.yawKick = smooth(car.yawKick, 0, dt, 5);
+  car.rollKick = smooth(car.rollKick, 0, dt, 5);
   const turn = clamp(f.curve * 50, -.9, .9);
   const weave = Math.sin(car.s / 48 + car.phase) * .24 + Math.sin(car.s / 23 - car.phase) * .095;
   const nearAhead = run.racers.find(other => other !== car && other.finishAt === null &&
@@ -235,6 +252,14 @@ function driveRival(run, car, dt) {
     line = nearAhead.offset + car.lastPassSide * 2.25;
     if (Math.abs(line) > width * .78) line = nearAhead.offset - car.lastPassSide * 2.25;
   }
+  if (run.difficulty === 'pro') {
+    // Pro rivals defend: when the player is right behind them and lining up
+    // a pass, they drift towards the player's line to block it.
+    const behind = car.s - run.player.s;
+    if (behind > 0 && behind < 9 && Math.abs(run.player.offset - car.offset) < 2.6) {
+      line = clamp(line + clamp(run.player.offset - car.offset, -1, 1) * .55, -width * .8, width * .8);
+    }
+  }
   line = avoidHazard(run, car, line);
   const steer = clamp((line - car.offset) / 2.35, -1, 1);
   car.sideSpeed = smooth(car.sideSpeed, steer * (car.slick ? 3.5 : 7.1) + (car.slick ? car.skidSide * 2.4 : 0), dt, 5.1);
@@ -244,13 +269,15 @@ function driveRival(run, car, dt) {
   car.charge = car.drift ? .25 + Math.abs(turn) * .4 : 0;
   car.roll = smooth(car.roll, -.09 * steer, dt, 5.7);
   car.yawOffset = smooth(car.yawOffset, Math.atan2(car.sideSpeed, Math.max(9, car.speed)) * .66, dt, 5.8);
+  car.yawOffset += car.yawKick;
+  car.roll += car.rollKick;
   car.airborne = car.jumpY + Math.max(0, course.frame(car.s - 4).dy - f.dy - .043) * .32;
 
   // The AI follows similar corner rules to the player with small pacing variation.
   const penalty = Math.min(.25, Math.abs(f.curve) * (car.grip ? 2.25 : 4.3));
   const targetSpeed = (course.cruise * car.pace * (1 - penalty) +
     .46 * Math.sin(car.s / 28 + car.phase) - f.dy * 3.2 + (car.boost > 0 ? 7.9 : 0)) *
-    (car.slow > 0 ? .70 : car.slick > 0 ? .90 : 1);
+    (car.stun > 0 ? .55 : car.gum > 0 ? .55 : car.slow > 0 ? .70 : car.slick > 0 ? .90 : 1);
   // Rubber-banding: rivals far behind the player catch up, rivals far ahead
   // ease off. v8.1's ±.32 was too weak to matter (a 5 s stop cost only 2.7 s).
   const gap = run.player.s - car.s;
@@ -278,17 +305,50 @@ function spreadKarts(run, dt) {
       if (i === 0 && a.contact <= 0 && (Math.abs(a.speed - b.speed) > 1.5 || Math.abs(a.sideSpeed) > 4.2)) {
         a.contact = .44;
         b.contact = Math.max(b.contact, .25);
-        a.speed *= a.boost > 0 ? .96 : .90;
-        b.speed *= .95;
+        // A real hit now: clear speed loss plus a short stun that cuts thrust,
+        // so a hit can cost a position instead of healing in half a second.
+        // Rear-ends are different: the kart ahead gets shoved forward and the
+        // rammer loses less — otherwise a slower rival becomes a wall the
+        // player keeps hitting every half second at the start.
+        const rearEnd = forward < 0 && a.speed > b.speed;
+        if (rearEnd) {
+          a.speed *= a.boost > 0 ? .92 : .86;
+          b.speed = Math.min(b.speed * 1.05, run.course.cruise * 1.15);
+          a.stun = Math.max(a.stun, .3);
+          b.stun = Math.max(b.stun, .2);
+        } else {
+          a.speed *= a.boost > 0 ? .90 : .82;
+          b.speed *= .93;
+          a.stun = Math.max(a.stun, .45);
+          b.stun = Math.max(b.stun, .3);
+        }
         // Knockback: shove both karts apart sideways and jolt their heading,
         // so a hit reads instead of sliding through.
-        const kick = (side < 0 ? -1 : 1) * 2.4;
+        const kick = (side < 0 ? -1 : 1) * (rearEnd ? 3.2 : 2.4);
         a.sideSpeed += kick;
         b.sideSpeed -= kick;
         a.yawOffset += (side < 0 ? -1 : 1) * .05;
         b.yawOffset -= (side < 0 ? -1 : 1) * .08;
+        a.yawKick += (side < 0 ? -1 : 1) * .2;
+        b.yawKick -= (side < 0 ? -1 : 1) * .16;
+        a.rollKick += .14;
+        b.rollKick += .1;
         run.hits++;
         run.events.push({ type: 'hit', rival: b.id, strength: Math.min(1, Math.abs(a.sideSpeed) / 8 + .3) });
+      } else if (i === 0 && a.contact <= 0 && forward > 0 && b.speed > a.speed + .6) {
+        // Rival rams from behind while overtaking: the player gets shoved
+        // sideways and loses speed, the rival pays a little too.
+        a.contact = .44;
+        b.contact = Math.max(b.contact, .25);
+        const shove = a.offset >= b.offset ? 1 : -1;
+        a.speed *= .93;
+        b.speed *= .97;
+        a.sideSpeed += shove * 2.0;
+        a.stun = Math.max(a.stun, .35);
+        a.yawKick += shove * .18;
+        a.rollKick += .12;
+        run.hits++;
+        run.events.push({ type: 'hit', rival: b.id, strength: .55 });
       }
     }
   }

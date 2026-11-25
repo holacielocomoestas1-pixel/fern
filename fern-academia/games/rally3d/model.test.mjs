@@ -131,6 +131,73 @@ test('perfect start grants a launch boost', () => {
   assert.ok(run.events.some(event => event.type === 'boost' && event.source === 'start'));
 });
 
+test('a kart hit costs real speed, stuns thrust and shakes the kart', () => {
+  const run = createRace(COURSES[0]);
+  const a = run.player;
+  const b = run.racers[1];
+  Object.assign(a, { s: 20, offset: .7, speed: 25, sideSpeed: 5.2 });
+  Object.assign(b, { s: 21, offset: 0, speed: 19 });
+  stepRace(run, {}, STEP);
+  assert.ok(a.speed < 22, `hit speed ${a.speed}`);
+  assert.ok(a.stun > 0, 'hit stuns thrust');
+  assert.ok(Math.abs(a.yawKick) > 0, 'hit shakes the heading');
+  assert.ok(run.events.some(event => event.type === 'hit' && event.rival === b.id));
+});
+
+test('a rival closing from behind shoves the player while overtaking', () => {
+  const run = createRace(COURSES[0]);
+  const a = run.player;
+  const b = run.racers[1];
+  Object.assign(a, { s: 20, offset: 0, speed: 22, sideSpeed: 0 });
+  Object.assign(b, { s: 18.5, offset: .3, speed: 23 });
+  stepRace(run, {}, STEP);
+  const shove = run.events.find(event => event.type === 'hit' && event.rival === b.id);
+  assert.ok(shove, 'rival shove reported');
+  assert.equal(shove.strength, .55);
+  assert.ok(a.speed < 21.5, `shoved speed ${a.speed}`);
+  assert.ok(a.stun > 0, 'shove stuns thrust');
+  assert.ok(Math.abs(a.sideSpeed) > 1, 'shove pushes the kart sideways');
+});
+
+test('gum glues the kart: big speed cut and slow running after the patch', () => {
+  const course = COURSES[0];
+  const gum = course.hazards.find(trap => trap.kind === 'gum');
+  assert.ok(gum, 'mosswood has a gum trap');
+  const run = createRace(course, { mode: 'trial' });
+  Object.assign(run.player, { s: gum.s - 6, offset: gum.offset, speed: 21 });
+  let hit = false;
+  for (let i = 0; i < 120 && !hit; i++) {
+    const steer = clamp((gum.offset - run.player.offset) * .5, -1, 1);
+    stepRace(run, { steer }, STEP);
+    hit = run.events.some(event => event.type === 'hazard' && event.kind === 'gum');
+  }
+  assert.ok(hit, 'player drove through the gum');
+  assert.ok(run.player.gum > 0, 'gum timer set');
+  assert.ok(run.player.speed < 17, `gum speed ${run.player.speed}`);
+  for (let i = 0; i < 30; i++) stepRace(run, {}, STEP);
+  assert.ok(run.player.gum > .5, 'gum still slowing half a second later');
+  assert.ok(run.player.speed < course.cruise * .8, `glued speed ${run.player.speed}`);
+});
+
+test('hitting the verge scrubs real speed and stuns the kart', () => {
+  const run = createRace(COURSES[0], { mode: 'trial' });
+  Object.assign(run.player, { speed: 21, s: 18 });
+  let before = 0, after = 0, stunned = false;
+  for (let i = 0; i < 180; i++) {
+    before = run.player.speed;
+    stepRace(run, { steer: 1 });
+    if (run.events.some(event => event.type === 'bump')) {
+      after = run.player.speed;
+      stunned = run.player.stun > 0;
+      break;
+    }
+    run.events.splice(0);
+  }
+  assert.ok(after > 0, 'bump happened');
+  assert.ok(after < before * .98, `bump speed ${after} vs ${before}`);
+  assert.ok(stunned, 'bump stuns thrust');
+});
+
 test('track edge bounces the kart back with a bump', () => {
   const run = createRace(COURSES[0], { mode: 'trial' });
   Object.assign(run.player, { speed: 21, s: 18 });

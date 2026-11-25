@@ -64,6 +64,20 @@ function hazard(kind) {
       const t=.18+i*.09;
       b.face([[-.65+i*.17,.055,t],[-.19+i*.19,.055,t+.075],[.24+i*.09,.055,t+.04],[-.07+i*.1,.055,t+.004]],i%2?"6b7294":"639a9e");
     }
+  } else if(kind==="gum"){
+    // Flat sticky bubblegum splat: a wobbly pink blob with glossy drips.
+    const sides=17;
+    const edge=t=>{const a=t*2*Math.PI/sides;const radius=.9+.09*Math.sin(a*4+.9)+.05*Math.sin(a*7);
+      return [Math.cos(a)*radius,.038,Math.sin(a)*radius];};
+    b.face(Array.from({length:sides},(_,i)=>edge(sides-i)),"ff5fa2");
+    b.face(Array.from({length:sides},(_,i)=>{const [x,y,z]=edge(sides-i);return [x*.82,y+.006,z*.82];}),"ff9ec7");
+    for(let i=0;i<3;i++) {
+      const t=.16+i*.1;
+      b.face([[-.6+i*.18,.055,t],[-.16+i*.2,.055,t+.08],[.26+i*.1,.055,t+.045],[-.05+i*.11,.055,t+.004]],i%2?"ffd3e8":"ff7eb6");
+    }
+    for(const [x,z,r] of [[.62,.5,.16],[-.58,-.42,.13],[.1,.68,.11]]) {
+      b.face(Array.from({length:9},(_,i)=>{const a=i*2*Math.PI/9;return [x+Math.cos(a)*r,.05,z+Math.sin(a)*r];}),"ff5fa2");
+    }
   } else if(kind==="hurdle"){
     for(const x of [-.81,.81]){
       b.box(x,0,0,.22,.17,.70,"iron");b.box(x,.13,0,.10,.68,.20,"cream");
@@ -110,7 +124,7 @@ function powerBox() {
   return b.faces;
 }
 
-export const fixtures = Object.fromEntries(["slick","sweeper","hurdle","slalom"].map(kind=>[kind,hazard(kind)]));
+export const fixtures = Object.fromEntries(["slick","sweeper","hurdle","slalom","gum"].map(kind=>[kind,hazard(kind)]));
 fixtures.item=powerBox();
 
 export function fixtureMesh(faces, material={}) {

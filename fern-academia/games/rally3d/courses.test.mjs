@@ -78,7 +78,7 @@ for (const course of COURSES) {
     for (const items of [course.items,course.hazards,course.pads,course.pickups]) {
       assert.ok(items.every((o,i)=>o.id===i && o.s>=0 && o.s<course.length && Math.abs(o.offset)<course.halfWidth));
     }
-    assert.equal(new Set(course.hazards.map(h=>h.kind)).size,4);
+    assert.deepEqual([...new Set(course.hazards.map(h => h.kind))].sort(), ['gum', 'hurdle', 'slalom', 'slick', 'sweeper']);
     course.hazards.forEach((h,i) => {
       const previous = course.hazards[(i+course.hazards.length-1)%course.hazards.length];
       const gap=(h.s-previous.s+course.length)%course.length;

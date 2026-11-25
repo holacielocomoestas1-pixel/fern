@@ -21,7 +21,7 @@ const PLANS = [
     elevation: [[0,4],[.09,7],[.24,31],[.37,25],[.50,42],[.62,19],[.74,5],[.84,13],[.94,4],[1,4]],
     sectors: [section(0,'Sawyer Meadow','ทุ่งโรงเลื่อย'),section(.25,'Pine Cathedral','แนวสนสูง'),section(.50,'Deer Ridge','สันเขากวาง'),section(.77,'Mill Creek','ลำธารโรงสี')],
     landmarks: [landmark(.067,'mill','Copper wheel','กังหันทองแดง'),landmark(.31,'pines','Cathedral pines','หมู่สนสูง'),landmark(.56,'lookout','Fire lookout','หอเฝ้าป่า'),landmark(.83,'bridge','Sawmill bridge','สะพานโรงเลื่อย')],
-    interval: 157, sequence: ['hurdle','slalom','slick','slalom','sweeper','slalom'], lanes: [0,.46,-.48,.39,-.3,-.36],
+    interval: 157, sequence: ['hurdle','slalom','slick','slalom','sweeper','slalom','gum'], lanes: [0,.46,-.48,.39,-.3,-.36],
     bridges: [[.072,.096],[.782,.813]],
   },
   {
@@ -36,7 +36,7 @@ const PLANS = [
     elevation: [[0,5],[.075,12],[.20,47],[.34,72],[.42,78],[.51,56],[.65,33],[.72,42],[.86,7],[.95,5],[1,5]],
     sectors: [section(0,'Lantern Market','ตลาดโคมไฟ'),section(.19,'The Tea Terraces','ไร่ชาขั้นบันได'),section(.43,'Bell Summit','ยอดเขาระฆัง'),section(.70,'Ember Descent','ทางลงแสงโคม')],
     landmarks: [landmark(.056,'lantern','Market arch','ซุ้มตลาด'),landmark(.27,'terrace','Tea pavilion','ศาลาไร่ชา'),landmark(.45,'tower','Bell tower','หอระฆัง'),landmark(.76,'bridge','Lantern viaduct','สะพานโคมไฟ')],
-    interval: 144, sequence: ['hurdle','sweeper','slalom','slick','slalom','sweeper','hurdle'], lanes: [0,-.22,.42,-.49,-.32,.18,.35],
+    interval: 144, sequence: ['hurdle','sweeper','slalom','slick','slalom','sweeper','hurdle','gum'], lanes: [0,-.22,.42,-.49,-.32,.18,.35],
     bridges: [[.31,.334],[.710,.747]],
   },
   {
@@ -51,7 +51,7 @@ const PLANS = [
     elevation: [[0,2],[.09,4],[.18,21],[.29,12],[.40,3],[.53,17],[.61,14],[.68,3],[.79,6],[.88,23],[.97,2],[1,2]],
     sectors: [section(0,'Shell Harbour','ท่าเรือเปลือกหอย'),section(.23,'Twin Coves','อ่าวแฝด'),section(.49,'White Cliffs','หน้าผาขาว'),section(.76,'Lighthouse Run','ทางประภาคาร')],
     landmarks: [landmark(.08,'dock','Shell pier','ท่าเรือเปลือกหอย'),landmark(.32,'stack','Chalk needles','เสาหินปูน'),landmark(.60,'arch','Sea arch','ซุ้มหินทะเล'),landmark(.87,'lighthouse','Tide light','ประภาคารน้ำขึ้น')],
-    interval: 152, sequence: ['hurdle','slick','slalom','sweeper','slick','hurdle'], lanes: [0,-.48,.5,.10,.44,-.31],
+    interval: 152, sequence: ['hurdle','slick','slalom','sweeper','gum','hurdle'], lanes: [0,-.48,.5,.10,.44,-.31],
     bridges: [[.165,.191],[.416,.447],[.713,.739]],
   },
   {
@@ -67,7 +67,7 @@ const PLANS = [
     elevation: [[0,2],[.10,5],[.19,3],[.31,16],[.42,8],[.52,3],[.62,11],[.72,4],[.81,3],[.90,21],[.97,2],[1,2]],
     sectors: [section(0,'Fisher Wharf','ท่าเรือชาวประมง'),section(.22,'Root Maze','เขาวงกตรากไม้'),section(.48,'Kingfisher Banks','ตลิ่งนกกระเต็น'),section(.76,'Salt Flats','ลานเกลือ')],
     landmarks: [landmark(.06,'dock','Fishing wharf','ท่าเรือประมง'),landmark(.28,'roots','Mangrove roots','รากโกงกาง'),landmark(.57,'bridge','Tide crossing','สะพานน้ำขึ้น'),landmark(.85,'mill','Salt windmill','กังหันนาเกลือ')],
-    interval: 147, sequence: ['hurdle','slick','sweeper','slick','slalom','sweeper','slalom'], lanes: [0,.45,-.22,-.53,.48,.12,-.43],
+    interval: 147, sequence: ['hurdle','slick','sweeper','gum','slalom','sweeper','slalom'], lanes: [0,.45,-.22,-.53,.48,.12,-.43],
     bridges: [[.118,.142],[.291,.318],[.475,.51],[.64,.672],[.81,.842]],
   },
   {
@@ -83,7 +83,7 @@ const PLANS = [
     elevation: [[0,9],[.08,25],[.17,49],[.28,73],[.39,91],[.46,86],[.57,55],[.66,63],[.76,28],[.85,9],[.93,3],[1,9]],
     sectors: [section(0,'Loading Yard','ลานขนแร่'),section(.21,'Copper Ledges','ชั้นหินทองแดง'),section(.46,'Upper Works','โรงงานบนเขา'),section(.72,'Crusher Bend','โค้งโรงโม่')],
     landmarks: [landmark(.064,'gantry','Loading crane','ปั้นจั่นขนแร่'),landmark(.29,'quarry','Cut-stone ledges','ผาหินตัด'),landmark(.50,'tower','Headframe','หอรอกเหมือง'),landmark(.82,'trestle','Ore trestle','สะพานขนแร่')],
-    interval: 138, sequence: ['hurdle','slalom','sweeper','hurdle','slick','sweeper','slalom','hurdle'], lanes: [0,.46,-.14,-.30,.49,.17,-.37,.32],
+    interval: 138, sequence: ['hurdle','slalom','sweeper','hurdle','slick','sweeper','slalom','hurdle','gum'], lanes: [0,.46,-.14,-.30,.49,.17,-.37,.32],
     bridges: [[.416,.44],[.792,.82]],
   },
   {
@@ -100,7 +100,7 @@ const PLANS = [
     elevation: [[0,5],[.08,8],[.18,32],[.29,52],[.40,39],[.49,54],[.58,28],[.69,34],[.80,12],[.90,20],[.97,5],[1,5]],
     sectors: [section(0,'Peach Orchard','สวนท้อ'),section(.23,'Petal Ridge','สันเขากลีบดอก'),section(.48,'Blossom Gallery','แนวซากุระ'),section(.74,'Tea House Lane','ทางโรงน้ำชา')],
     landmarks: [landmark(.066,'orchard','Peach terraces','สวนท้อขั้นบันได'),landmark(.27,'tree','The old cherry','ต้นซากุระเก่า'),landmark(.54,'pavilion','Petal pavilion','ศาลากลีบดอก'),landmark(.82,'bridge','Red orchard bridge','สะพานแดงในสวน')],
-    interval: 146, sequence: ['hurdle','slalom','slalom','slick','sweeper','slalom','hurdle'], lanes: [0,-.48,.48,.39,-.21,-.40,.31],
+    interval: 146, sequence: ['hurdle','slalom','slalom','slick','sweeper','slalom','hurdle','gum'], lanes: [0,-.48,.48,.39,-.21,-.40,.31],
     bridges: [[.24,.264],[.78,.808]],
   },
   {
@@ -118,7 +118,7 @@ const PLANS = [
     elevation: [[0,11],[.08,31],[.17,67],[.25,82],[.37,116],[.46,103],[.55,79],[.65,48],[.75,33],[.81,45],[.92,6],[1,11]],
     sectors: [section(0,'Moraine Base','เชิงธารน้ำแข็ง'),section(.22,'Ice Ladders','บันไดน้ำแข็ง'),section(.48,'Blue Col','ช่องเขาสีน้ำเงิน'),section(.74,'Frozen Lake','ทะเลสาบน้ำแข็ง')],
     landmarks: [landmark(.077,'lodge','Survey lodge','กระท่อมสำรวจ'),landmark(.29,'ice','Blue icefall','น้ำตกน้ำแข็ง'),landmark(.53,'spire','Glacier needles','ยอดหินธารน้ำแข็ง'),landmark(.83,'bridge','Ice lake bridge','สะพานทะเลสาบน้ำแข็ง')],
-    interval: 140, sequence: ['hurdle','slick','sweeper','slick','slalom','hurdle','slick','slalom'], lanes: [0,-.5,.16,.55,-.43,.20,-.42,.39],
+    interval: 140, sequence: ['hurdle','slick','sweeper','slick','slalom','hurdle','gum','slalom'], lanes: [0,-.5,.16,.55,-.43,.20,-.42,.39],
     bridges: [[.205,.232],[.527,.55],[.79,.823]],
   },
   {
@@ -137,7 +137,7 @@ const PLANS = [
     elevation: [[0,8],[.075,35],[.15,73],[.24,81],[.32,37],[.42,65],[.52,107],[.60,121],[.68,88],[.76,46],[.83,57],[.94,7],[1,8]],
     sectors: [section(0,'Ash Fields','ทุ่งเถ้าถ่าน'),section(.23,'Inner Crater','ปล่องชั้นใน'),section(.48,'Obsidian Rim','ขอบปล่องออบซิเดียน'),section(.73,'Furnace Chute','ทางลงเตาหลอม')],
     landmarks: [landmark(.06,'obelisk','Basalt columns','เสาหินบะซอลต์'),landmark(.28,'crater','Crater vent','ช่องไอภูเขาไฟ'),landmark(.55,'arch','Obsidian arch','ซุ้มหินภูเขาไฟ'),landmark(.83,'viaduct','Cinder viaduct','สะพานหุบภูเขาไฟ')],
-    interval: 133, sequence: ['hurdle','sweeper','hurdle','slick','slalom','sweeper','slalom','sweeper'], lanes: [0,.2,-.39,.53,-.40,-.19,.43,-.14],
+    interval: 133, sequence: ['hurdle','sweeper','hurdle','slick','slalom','sweeper','slalom','sweeper','gum'], lanes: [0,.2,-.39,.53,-.40,-.19,.43,-.14],
     bridges: [[.174,.194],[.48,.509],[.794,.827]],
   },
   {
@@ -155,7 +155,7 @@ const PLANS = [
     elevation: [[0,8],[.08,29],[.16,48],[.27,62],[.40,82],[.51,100],[.60,84],[.69,44],[.77,56],[.84,26],[.95,6],[1,8]],
     sectors: [section(0,'Lower Gate','ประตูล่าง'),section(.22,'Western Ramparts','กำแพงตะวันตก'),section(.48,'Cloud Keep','ป้อมกลางเมฆ'),section(.75,'Watch Road','ถนนหอเฝ้ายาม')],
     landmarks: [landmark(.075,'gate','Gatehouse','ป้อมประตู'),landmark(.30,'rampart','Western tower','หอตะวันตก'),landmark(.54,'citadel','Cloud keep','ป้อมกลางเมฆ'),landmark(.84,'aqueduct','Old aqueduct','สะพานส่งน้ำเก่า')],
-    interval: 141, sequence: ['hurdle','slalom','sweeper','slalom','hurdle','slick','sweeper'], lanes: [0,-.47,.18,.43,-.21,.48,-.15],
+    interval: 141, sequence: ['hurdle','slalom','sweeper','slalom','hurdle','slick','sweeper','gum'], lanes: [0,-.47,.18,.43,-.21,.48,-.15],
     bridges: [[.143,.166],[.547,.569],[.827,.852]],
   },
   {
@@ -175,7 +175,7 @@ const PLANS = [
     elevation: [[0,8],[.08,31],[.16,64],[.23,51],[.32,94],[.41,125],[.49,142],[.57,113],[.64,88],[.72,55],[.77,70],[.85,39],[.94,6],[1,8]],
     sectors: [section(0,'Polar Station','สถานีขั้วโลก'),section(.21,'North Face','หน้าผาเหนือ'),section(.46,'Aurora Crown','ยอดเขาออโรรา'),section(.73,'Midnight Fjord','ฟยอร์ดเที่ยงคืน')],
     landmarks: [landmark(.066,'station','Polar outpost','ฐานขั้วโลก'),landmark(.26,'ice','North ice wall','ผาน้ำแข็งเหนือ'),landmark(.53,'dome','Aurora observatory','หอดูแสงเหนือ'),landmark(.85,'fjord','Midnight crossing','ทางข้ามฟยอร์ด')],
-    interval: 132, sequence: ['hurdle','slick','sweeper','slalom','hurdle','sweeper','slick','slalom','sweeper'], lanes: [0,-.5,.18,.45,-.32,-.22,.48,-.39,.15],
+    interval: 132, sequence: ['hurdle','slick','sweeper','slalom','hurdle','sweeper','gum','slalom','sweeper'], lanes: [0,-.5,.18,.45,-.32,-.22,.48,-.39,.15],
     bridges: [[.182,.207],[.425,.448],[.757,.785],[.849,.874]],
   },
 ];
@@ -301,6 +301,7 @@ const HAZARD_SIZE = {
   sweeper: [1.14, .9],
   slick: [1.58, 3.15],
   slalom: [.9, .86],
+  gum: [1.5, 2.6],
 };
 
 function raceObjects(plan, frame) {

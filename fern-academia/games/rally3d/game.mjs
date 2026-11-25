@@ -142,7 +142,7 @@ export function launch3D(container, ctx, switchToClassic) {
   let previousPower = "";
   let hopPulse = false;
   let ghostInterval = .2;
-  let cameraMode = "chase";
+  let cameraMode = ["chase", "wide", "bumper"].includes(record.settings().camera) ? record.settings().camera : "chase";
   let currentWorld;
   let karts;
   let uploadedKarts;
@@ -173,6 +173,7 @@ export function launch3D(container, ctx, switchToClassic) {
   let messageUntil = 0;
   let boostPulse = false;
   let trauma = 0;
+  let hitFlash = 0;
   let lastBoostPress = -10;
   let launchBoostHeld = false;
   let launchBoostQueued = false;
@@ -342,12 +343,13 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function refreshButtons() {
-    const race = driving();
-    toolbar.rear.hidden = !race;
-    toolbar.camera.hidden = !race;
+    // A quiet toolbar: only pause stays up top during a race. Camera and
+    // sound live in the Settings modal now; rear view stays on keys/gamepad.
+    toolbar.rear.hidden = true;
+    toolbar.camera.hidden = true;
+    toolbar.sound.hidden = true;
     toolbar.pause.hidden = !active() || phase === "finish";
     toolbar.settings.hidden = !["menu", "pause"].includes(phase);
-    toolbar.sound.hidden = ["lost", "study", "quiz"].includes(phase);
     const label = cameraLabel(cameraMode, lang);
     toolbar.camera.setAttribute("aria-label", label);
     toolbar.camera.title = label;
@@ -680,18 +682,19 @@ export function launch3D(container, ctx, switchToClassic) {
           director.pulse("power");
         } else if (event.type === "hazard" && !event.blocked) {
           trauma = Math.min(1, trauma + .3);
-          const kind = { slick: t("Slippery surface","พื้นลื่น"), hurdle: t("Hop over low gates","กระโดดข้ามรั้วเตี้ย"), sweeper: t("Watch the moving gate","ระวังประตูเคลื่อนที่"), slalom: t("Dodge the barriers","หลบสิ่งกีดขวาง") }[event.kind];
+          if (event.kind === "gum") hitFlash = .35;
+          const kind = { slick: t("Slippery surface","พื้นลื่น"), hurdle: t("Hop over low gates","กระโดดข้ามรั้วเตี้ย"), sweeper: t("Watch the moving gate","ระวังประตูเคลื่อนที่"), slalom: t("Dodge the barriers","หลบสิ่งกีดขวาง"), gum: t("Sticky gum! You're stuck","ติดหมากฝรั่งแล้ว!") }[event.kind];
           if (kind) say(kind,1.6);
         }
       } else if (["boost","pickup","hit","offroad","bump"].includes(event.type)) {
         audio.play(event.type,event);
         if (event.type === "boost") director.pulse("turbo");
-        if (event.type === "hit") { trauma = Math.min(1, trauma + .5 * (event.strength || .5)); director.pulse("hit", event.strength || .5); }
+        if (event.type === "hit") { trauma = Math.min(1, trauma + .5 * (event.strength || .5)); hitFlash = .5; director.pulse("hit", event.strength || .5); }
         else if (event.type === "offroad") {
           trauma = Math.min(1, trauma + .25);
           say(t("Off the track!", "ออกนอกถนน!"), 1.4);
         }
-        else if (event.type === "bump") { trauma = Math.min(1, trauma + .35 * (event.strength || .5)); director.pulse("hit", event.strength || .5); }
+        else if (event.type === "bump") { trauma = Math.min(1, trauma + .35 * (event.strength || .5)); hitFlash = .4; director.pulse("hit", event.strength || .5); }
       }
     }
   }
@@ -840,6 +843,8 @@ export function launch3D(container, ctx, switchToClassic) {
     settledTime += elapsed;
     // Camera shake decays over time.
     trauma = Math.max(0, trauma - elapsed * 1.7);
+    hitFlash = Math.max(0, hitFlash - elapsed * 2.2);
+    scene.dataset.hit = String(hitFlash > 0 && !reduced());
     if (phase === beforeControl) phaseTime += elapsed;
     if (animated()) renderClock += delta;
     if (phase === "intro" && phaseTime >= INTRO_SECONDS) toGrid();
@@ -1028,6 +1033,11 @@ export function launch3D(container, ctx, switchToClassic) {
       perfClock = 0;
       renderer.setQuality?.(quality);
       resize();
+    }
+    if (name === "camera" && CAMERA_MODES.includes(value) && value !== cameraMode) {
+      cameraMode = value;
+      refreshButtons();
+      if (driving()) say(cameraLabel(cameraMode, lang), 1.0);
     }
     scene.dataset.calm = String(reduced());
     refreshButtons();

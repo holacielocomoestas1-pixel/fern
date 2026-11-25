@@ -74,6 +74,9 @@
 .rr3[data-phase="intro"] .rr3-lens { background: linear-gradient(180deg,#14221ba1,transparent 24%,transparent 56%,#061410d8 92%); }
 .rr3-flare { pointer-events: none; opacity: 0; transition: opacity .23s ease; box-shadow: inset 0 0 58px 11px #d5ffa158; mix-blend-mode: screen; }
 .rr3[data-boost="true"] .rr3-flare { opacity: 1; }
+.rr3-hit { position: absolute; inset: 0; z-index: 4; pointer-events: none; opacity: 0; transition: opacity .12s ease; background: radial-gradient(ellipse at 50% 46%, transparent 52%, #ff2d1e59 84%, #ff2d1e8c); }
+.rr3[data-hit="true"] .rr3-hit { opacity: 1; }
+.rr3[data-calm="true"] .rr3-hit { opacity: 0; }
 .rr3-toolbar {
   position: absolute;
   z-index: 7;
@@ -225,23 +228,23 @@
 }
 .rr3-pills { display: flex; gap: 5px; flex-wrap: wrap; }
 .rr3-stat {
-  min-width: 62px;
+  min-width: 54px;
   display: grid;
   align-content: center;
-  padding: 7px 10px;
+  padding: 5px 8px;
   background: var(--rr-pane);
   color: var(--rr-white);
   border: 1px solid var(--rr-border);
   border-radius: 11px;
   font-variant-numeric: tabular-nums;
 }
-.rr3-stat small { color: var(--rr-dim); font-size: .69rem; }
-.rr3-stat strong { line-height: 1.1; font-size: 1.15rem; font-weight: 840; }
+.rr3-stat small { color: var(--rr-dim); font-size: .62rem; }
+.rr3-stat strong { line-height: 1.1; font-size: 1rem; font-weight: 840; }
 .rr3-stat [data-value="rank"] { color: var(--rr-mint); }
 .rr3-sector { margin-top: 8px; color: var(--rr-white); font-size: .77rem; font-weight: 700; text-shadow: 0 2px 6px #061917, 0 0 5px #061917; }
 .rr3-route-progress { display: block; height: 3px; margin-top: 4px; max-width: 210px; border-radius: 4px; background: #091915bd; overflow: hidden; }
 .rr3-route-progress i { display: block; height: 100%; background: var(--rr-mint); border-radius: inherit; }
-.rr3-map { width: 113px; height: 76px; background: var(--rr-pane); border-radius: 11px; border: 1px solid var(--rr-border); }
+.rr3-map { width: 96px; height: 64px; background: var(--rr-pane); border-radius: 11px; border: 1px solid var(--rr-border); }
 .rr3-speed {
   position: absolute;
   bottom: calc(var(--rr-safe-bottom) + 104px);
@@ -261,35 +264,37 @@
   position: absolute;
   z-index: 6;
   right: var(--rr-safe-right);
-  bottom: calc(var(--rr-safe-bottom) + clamp(72px, 17vw, 90px));
+  /* Docked tight above the action buttons instead of floating mid-screen. */
+  bottom: calc(var(--rr-safe-bottom) + clamp(78px, 19vw, 96px));
   max-width: calc(100% - var(--rr-safe-left) - var(--rr-safe-right));
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   align-items: stretch;
 }
 .rr3-power button {
-  border-radius: 12px;
+  border-radius: 11px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 48px;
-  padding: 7px 12px;
-  line-height: 1.12;
-  font-size: .85rem;
-  font-weight: 750;
+  gap: 6px;
+  min-height: 40px;
+  padding: 5px 10px;
+  line-height: 1.1;
+  font-size: .78rem;
+  font-weight: 700;
   text-align: left;
   touch-action: none;
 }
-.rr3-power-use { background: #fbdfa7; color: #210f06; border: 1px solid #ffd985; box-shadow: 0 3px 20px #160f0870; }
+.rr3-power-use { background: #14352acc; color: #ffe9a4; border: 1px solid #f7d69455; }
 .rr3-power-use :where(small,strong) { display: block; }
-.rr3-power-use small { color: #573919; }
+.rr3-power-use small { color: #cbb98a; font-size: .66rem; }
 .rr3-power-use svg { display: block; }
-.rr3-power[data-level="2"] .rr3-power-use { background: #d8ffaf; border-color: #e9ffce; color: #103426; }
-.rr3-power-quiz { background: #0b281c; border: 1px solid #f7d6949c; color: #fff5dc; }
+.rr3-power[data-level="2"] .rr3-power-use { background: #2c4a2ee6; border-color: #d2ffd188; color: #eaffba; }
+.rr3-power-quiz { background: #0b281cbb; border: 1px solid #f7d69455; color: #fff5dc; }
 .rr3-power button:hover { filter: brightness(1.13); }
-.rr3-gyro-hint { display: none; flex-basis: 100%; margin: 2px 0 0; text-align: right; font-size: .68rem; font-weight: 600; color: #d8ffaf; text-shadow: 0 1px 6px #061712; }
+.rr3-gyro-hint { display: none; flex-basis: 100%; margin: 2px 0 0; text-align: right; font-size: .68rem; font-weight: 600; color: #d8ffaf; text-shadow: 0 1px 6px #061712; animation: rr3-gyro-fade .9s ease 5s forwards; }
 .rr3[data-gyro="on"] .rr3-gyro-hint { display: block; }
+@keyframes rr3-gyro-fade { to { opacity: 0; } }
 .rr3-controls {
   z-index: 6;
   position: absolute;
@@ -333,21 +338,22 @@
 }
 .rr3-stick[data-on="true"] .rr3-stick-thumb { box-shadow: 0 5px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.7), 0 0 14px rgba(210,255,209,.45); }
 .rr3-actions button {
-  min-width: clamp(64px, 16vw, 84px);
-  height: clamp(64px, 17vw, 84px);
+  min-width: clamp(56px, 14vw, 72px);
+  height: clamp(56px, 15vw, 72px);
   touch-action: none;
   pointer-events: auto;
   padding: 6px;
   flex-direction: column;
   line-height: 1.05;
   overflow: hidden;
+  border-color: #edffe42e;
   transition: transform 80ms ease-out, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 .rr3-actions button:active { transform: scale(.94); }
-.rr3-actions button svg { width: 21px; height: 21px; }
-.rr3-actions button { position: relative; font-size: .78rem; }
+.rr3-actions button svg { width: 19px; height: 19px; }
+.rr3-actions button { position: relative; font-size: .72rem; }
 .rr3-controls button[data-on="true"] { background: #7ab394c9; color: #0c2317; border-color: var(--rr-mint); }
-.rr3-controls button[data-ready="true"] { color: var(--rr-ink); background: #d8ffaf; border-color: #e9ffce; box-shadow: 0 0 20px #c1ff7d6e; }
+.rr3-controls button[data-ready="true"] { color: var(--rr-ink); background: #cfe9a8; border-color: #e9ffce; box-shadow: 0 0 10px #c1ff7d44; }
 .rr3-controls button:disabled { opacity: .63; }
 .rr3-meter { width: calc(100% - 12px); height: 3px; border-radius: 8px; background: #d1f8cc43; display: block; }
 .rr3-meter i { display: block; height: 100%; background: var(--rr-warm); border-radius: inherit; width: 0; }
@@ -463,15 +469,15 @@
   .rr3-arrows { gap: 3px; }
   .rr3-arrows .rr3-icon { width: 39px; min-height: 44px; }
   .rr3-chip { font-size: .83rem; padding-inline: 9px; }
-  .rr3-map { width: 82px; height: 61px; }
-  .rr3-stat { min-width: 45px; padding: 7px 6px; }
-  .rr3-stat strong { font-size: .99rem; }
+  .rr3-map { width: 72px; height: 54px; }
+  .rr3-stat { min-width: 40px; padding: 5px 6px; }
+  .rr3-stat strong { font-size: .92rem; }
   .rr3-controls { gap: 6px; left: max(9px, env(safe-area-inset-left, 0px)); right: max(9px, env(safe-area-inset-right, 0px)); }
   .rr3-steer,.rr3-actions { gap: 4px; }
   .rr3-stick { width: clamp(96px, 24vw, 108px); }
-  .rr3-actions button { height: 64px; min-width: clamp(64px, 16vw, 72px); padding-inline: 3px; }
+  .rr3-actions button { height: 56px; min-width: clamp(56px, 14vw, 64px); padding-inline: 3px; }
   .rr3-actions button { font-size: clamp(.69rem,2.9vw,.82rem); }
-  .rr3-power button { min-height: 44px; padding-inline: 8px; font-size: .8rem; }
+  .rr3-power button { min-height: 40px; padding-inline: 8px; font-size: .8rem; }
   .rr3-power button svg { width: 16px; height: 16px; }
   .rr3-stamp .rr3-chip { min-width: 44px; }
 }
@@ -479,7 +485,7 @@
   .rr3-controls { gap: 4px; }
   .rr3-steer,.rr3-actions { gap: 3px; }
   .rr3-stick { width: 84px; }
-  .rr3-actions button { height: 64px; min-width: 58px; }
+  .rr3-actions button { height: 56px; min-width: 52px; }
 }
 @media (max-width: 355px) {
   .rr3 { --rr-safe-left: max(10px, env(safe-area-inset-left)); --rr-safe-right: max(10px, env(safe-area-inset-right)); }
@@ -501,12 +507,14 @@
   .rr3-power:not([hidden]) ~ .rr3-coach { bottom: calc(var(--rr-safe-bottom) + 120px); }
   .rr3-coach { bottom: calc(var(--rr-safe-bottom) + 59px); }
   .rr3-stick { width: 96px; }
-  .rr3-actions button { height: 64px; min-width: 64px; }
+  .rr3-actions button { height: 56px; min-width: 56px; }
   .rr3-map { width: 92px; height: 64px; }
   .rr3-result h2 { font-size: clamp(2.6rem, 11vh, 5rem); }
 }
 @media (prefers-reduced-motion: reduce) {
   .rr3 *, .rr3 *::before,.rr3 *::after, .rr3-loading img { animation: none !important; transition-duration: 0s !important; }
+  .rr3-gyro-hint { display: none; }
 }
 .rr3[data-calm="true"] *, .rr3[data-calm="true"] *::before, .rr3[data-calm="true"] *::after { animation: none !important; transition: none !important; }
+.rr3[data-calm="true"] .rr3-gyro-hint { display: none; }
 .rr3[data-calm="true"] .rr3-flare { opacity: 0; }

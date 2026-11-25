@@ -16,12 +16,22 @@ test("tour keeps previous controls and sound, with a separate record book for th
   });
   const db = storage({ "fern-rally-3d-v1": oldData });
   const p = profile(db);
-  assert.deepEqual(p.settings(), { sound: false, motion: "calm", difficulty: "pro", quality: "auto" });
+  assert.deepEqual(p.settings(), { sound: false, motion: "calm", difficulty: "pro", quality: "auto", camera: "chase" });
   assert.equal(p.best("moss", "trial"), undefined);
   assert.equal(p.ghost("moss"), null);
   p.setSetting("sound", true);
   assert.equal(db.getItem("fern-rally-3d-v1"), oldData);
   assert.equal(profile(db).settings().sound, true);
+});
+
+test("camera view defaults to chase, keeps valid values and drops invalid ones", () => {
+  const db = storage();
+  const p = profile(db);
+  assert.equal(p.settings().camera, "chase");
+  p.setSetting("camera", "bumper");
+  assert.equal(profile(db).settings().camera, "bumper");
+  p.setSetting("camera", "orbit");
+  assert.equal(profile(db).settings().camera, "bumper");
 });
 
 test("visual quality defaults to auto, keeps valid values and drops invalid ones", () => {

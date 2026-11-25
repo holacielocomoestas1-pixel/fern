@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAudio, transmission } from "./audio.mjs";
+import { createAudio, transmission, RACE_PULSE } from "./audio.mjs";
 import { COURSES } from "./courses.mjs";
 import { POWER_VOICES, SOUND_WORLDS } from "./sound-worlds.mjs";
 
@@ -53,6 +53,12 @@ class AudioGraph {
     return this.nodes.slice(before).filter(node => node.kind === "oscillator" && node.calls.length);
   }
 }
+
+test("the race pulse is a soft short tap on one beat only, never a heartbeat", () => {
+  assert.deepEqual(RACE_PULSE.beats, [0]);
+  assert.ok(RACE_PULSE.volume <= .06, `pulse volume ${RACE_PULSE.volume}`);
+  assert.ok(RACE_PULSE.seconds <= .08, `pulse length ${RACE_PULSE.seconds}`);
+});
 
 test("transmission shifts up, preserves gear in the hysteresis band, then downshifts", () => {
   const idle = transmission(0);

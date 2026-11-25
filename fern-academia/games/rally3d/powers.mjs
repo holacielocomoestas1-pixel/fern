@@ -32,7 +32,7 @@ export function equipDriver(car, seed) {
     power: null, powerDeck: [], lastKind: '', powerSeed: ((seed >>> 0) ^ Math.imul(car.id + 1, 0x45d9f3b)) >>> 0 || 1,
     itemRows: new Set(), lastHazard: -1, aiUseAt: Infinity, aiUseBy: Infinity,
     shield: 0, guards: 0, magnet: 0, magnetLevel: 0, pulse: 0, pulseLock: 0,
-    grip: 0, gripLevel: 0, spring: 0, comet: 0, slick: 0, skidSide: 0, slow: 0,
+    grip: 0, gripLevel: 0, spring: 0, comet: 0, slick: 0, skidSide: 0, slow: 0, gum: 0,
     jumpY: 0, jumpV: 0, landingBoost: 0, hopCooldown: 0, hopInput: false,
   });
   return car;
@@ -216,7 +216,7 @@ function proOpportunity(run, car) {
   });
   switch (kind) {
     case 'shield': return !car.guards && !!upcoming;
-    case 'grip': return !car.grip && (car.slick > 0 || upcoming?.kind === 'slick' || Math.abs(course.frame(car.s + 12).curve) > .027);
+    case 'grip': return !car.grip && (car.slick > 0 || car.gum > 0 || upcoming?.kind === 'slick' || upcoming?.kind === 'gum' || Math.abs(course.frame(car.s + 12).curve) > .027);
     case 'spring': return !!upcoming && !car.jumpY && upcoming.eta >= .23 && upcoming.eta <= .59;
     case 'comet': return car.speed > 12 && car.boost < .3 && !car.slow && !upcoming;
     default: return false;
@@ -247,7 +247,7 @@ export function updateGear(run, car, dt) {
     else car.aiUseAt = Math.min(car.aiUseBy, run.time + .12);
   }
 }
-const timers = ['shield', 'magnet', 'pulse', 'pulseLock', 'grip', 'spring', 'comet', 'slick', 'slow', 'hopCooldown'];
+const timers = ['shield', 'magnet', 'pulse', 'pulseLock', 'grip', 'spring', 'comet', 'slick', 'slow', 'gum', 'hopCooldown'];
 
 export function captureRadius(car) {
   return car.magnet <= 0 ? 1.46 : car.magnetLevel === 2 ? 14 : 5.6;
@@ -303,12 +303,19 @@ function obstacle(run, car, h, lap, position, prev) {
   if (car.lastHazard === key) return;
   const offset = hazardOffset(run.course, h, run.time);
   if (Math.abs(car.offset - offset) > h.halfWidth + .64) return;
-  const clearance = h.kind === 'slick' ? .18 : h.kind === 'hurdle' ? .67 : h.kind === 'slalom' ? .88 : 1.03;
+  const clearance = h.kind === 'slick' || h.kind === 'gum' ? .18 : h.kind === 'hurdle' ? .67 : h.kind === 'slalom' ? .88 : 1.03;
   if (car.jumpY > clearance) return;
   car.lastHazard = key;
-  const guarded = (h.kind === 'slick' && car.grip > 0) || absorb(run, car, h.kind);
+  const guarded = ((h.kind === 'slick' || h.kind === 'gum') && car.grip > 0) || absorb(run, car, h.kind);
   if (!guarded) {
-    if (h.kind === 'slick') {
+    if (h.kind === 'gum') {
+      // Sticky gum: the kart glues to the road — big speed cut, steering goes
+      // heavy, and the gum timer keeps it slow after the patch ends.
+      car.gum = Math.max(car.gum || 0, 1.6);
+      car.speed *= .62;
+      car.sideSpeed *= .35;
+      car.yawKick = (car.yawKick || 0) + (Math.abs(car.offset - offset) > .1 ? Math.sign(car.offset - offset) : 1) * .12;
+    } else if (h.kind === 'slick') {
       car.slick = 1.25;
       car.skidSide = Math.abs(car.offset - offset) > .12 ? Math.sign(car.offset - offset) : (h.id % 2 ? 1 : -1);
       car.speed *= .91;
@@ -359,7 +366,7 @@ export function avoidHazard(run, car, line) {
   let target = line;
   nearby(course, 'hazards', car.s - 1.5, car.s + sight, (h, lap, position) => {
     if (car.lastHazard === lap * course.hazards.length + h.id || car.guards > 0 ||
-        (car.grip > 0 && h.kind === 'slick')) return;
+        (car.grip > 0 && (h.kind === 'slick' || h.kind === 'gum'))) return;
     const eta = Math.max(0, (position - car.s) / Math.max(5, car.speed));
     const lane = hazardOffset(course, h, run.time + eta);
     const clearance = h.halfWidth + 1.07;

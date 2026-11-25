@@ -10,6 +10,11 @@ const uiCues = new Set(['click', 'correct', 'wrong', 'powerUpgrade', 'powerQuizE
 const ratios = [1.02, .72, .55, .44, .36];
 const shiftSpeeds = [8.9, 15.1, 22.2, 31.4];
 
+// The race kick used to be a loud low thump (.235) on beats 0 AND 4 of every
+// bar — a constant heartbeat about once a second. It is now a barely-there
+// tap on beat 0 only, so the groove survives without the pulse.
+export const RACE_PULSE = { midi: 48, to: 30, volume: .05, seconds: .06, beats: [0] };
+
 // Hysteresis keeps the engine from hunting through two gears on a threshold.
 export function transmission(speed, gear = 0) {
   while (gear < shiftSpeeds.length && speed > shiftSpeeds[gear]) gear++;
@@ -235,7 +240,7 @@ export function createAudio({ AudioContext: ProvidedAudio, document: providedDoc
       for (const add of [0, 2, 4]) note(degreeMidi(world, chord + add), time + add * .018, .037, isRace ? .56 : .83, music, 'sine', degreeMidi(world, chord + add), .085);
     }
     if (isRace) {
-      if (beat === 0 || beat === 4) note(48, time, .235, .14, music, 'sine', 30);
+      if (RACE_PULSE.beats.includes(beat)) note(RACE_PULSE.midi, time, RACE_PULSE.volume, RACE_PULSE.seconds, music, 'sine', RACE_PULSE.to);
       if (beat === 2 || beat === 6) rustle(time, .10, world.instrument === 'iron' ? 1920 : 1360, .108, music);
       if (beat % 2 && (beat !== 7 || bar % 2)) rustle(time, .065, 6300, .052, music, 'highpass');
     }
@@ -437,6 +442,7 @@ export function createAudio({ AudioContext: ProvidedAudio, document: providedDoc
         if (value?.blocked || time - lastHit < .19) return;
         lastHit = time;
         if (value?.kind === 'slick') { burst(.185, 2630, .31, 'bandpass', 795); break; }
+        if (value?.kind === 'gum') { tone(52, 0, .14, .34, 26, 'sine'); burst(.16, 880, .34, 'lowpass', 210); break; }
         const soft = type === 'offroad';
         tone(46, 0, soft ? .066 : .17, .16, 31); burst(soft ? .095 : .205, 1420, .19, 'lowpass', 400); break;
       }
