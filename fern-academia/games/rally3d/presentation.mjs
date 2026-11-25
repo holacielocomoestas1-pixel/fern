@@ -127,8 +127,9 @@ export function infrastructure(lang, exit) {
     <div class="rr3-speed" hidden><strong data-value="speed">0</strong><small>${t("km/h", "กม./ชม.")}</small></div>
     <div class="rr3-controls" hidden>
       <div class="rr3-steer" role="group" aria-label="${t("Steering", "บังคับทิศทาง")}">
-        <button data-hold="left" type="button" aria-label="${t("Steer left", "เลี้ยวซ้าย")}">${glyph("left")}</button>
-        <button data-hold="right" type="button" aria-label="${t("Steer right", "เลี้ยวขวา")}">${glyph("right")}</button>
+        <div class="rr3-stick" data-stick tabindex="0" role="slider" aria-label="${t("Steering joystick: drag left or right to steer", "จอยสติ๊กบังคับทิศทาง: ลากซ้ายหรือขวาเพื่อเลี้ยว")}" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="${t("Centered", "ตรงกลาง")}">
+          <span class="rr3-stick-thumb" aria-hidden="true"></span>
+        </div>
       </div>
       <div class="rr3-actions" role="group" aria-label="${t("Driving actions", "การขับขี่")}">
         <button data-hold="brake" type="button" aria-keyshortcuts="S ArrowDown">${glyph("brake")}${t("Brake", "เบรก")}</button>
@@ -214,7 +215,7 @@ export function center(lang, phase, settings, wasPaused) {
     return `<section class="rr3-center" aria-labelledby="rr3-modal"><h2 id="rr3-modal">${t("Graphics interrupted", "กราฟิกถูกขัดจังหวะ")}</h2><p>${t("Restore the 3D scene or continue with compatible graphics.", "โหลดฉากสามมิติใหม่หรือเล่นด้วยภาพที่รองรับ")}</p><div class="rr3-buttons">${mainButton("restore", t("Restore graphics", "คืนค่ากราฟิก"))}${secondary("compatibility", t("Compatible graphics", "กราฟิกที่รองรับ"))}</div></section>`;
   }
   if (phase === "pause") {
-    return `<section class="rr3-center" aria-labelledby="rr3-modal"><h2 id="rr3-modal">${t("Paused", "หยุดชั่วคราว")}</h2><p>${t("Steer with A/D or the arrows. Hold drift through a turn and release to boost. Dodge striped barriers or hop over low gates.", "เลี้ยวด้วย A/D หรือปุ่มลูกศร กดดริฟต์ค้างขณะเลี้ยวแล้วปล่อยเพื่อเร่ง หลบสิ่งกีดขวางหรือกระโดดข้ามรั้วเตี้ย")}</p><details class="rr3-help"><summary>${t("Controls","วิธีบังคับ")}</summary><p>${t("S / ↓ brake · Space drift · Shift turbo · X hop · E use power · Q upgrade quiz · C camera · hold R for rear view.","S / ↓ เบรก · Space ดริฟต์ · Shift เทอร์โบ · X กระโดด · E ใช้พลัง · Q ควิซอัปเกรด · C กล้อง · กด R ค้างมองหลัง")}</p></details><div class="rr3-buttons">${mainButton("resume", t("Resume race", "แข่งต่อ"), "play")}${secondary("restart", t("Restart race", "เริ่มรอบใหม่"))}${secondary("lobby", t("Race menu", "เมนูแข่ง"))}</div></section>`;
+    return `<section class="rr3-center" aria-labelledby="rr3-modal"><h2 id="rr3-modal">${t("Paused", "หยุดชั่วคราว")}</h2><p>${t("Drag the stick to steer — release it to straighten. Hold drift through a turn and release to boost. Dodge striped barriers or hop over low gates.", "ลากจอยสติ๊กเพื่อเลี้ยว ปล่อยเพื่อกลับตรง กดดริฟต์ค้างขณะเลี้ยวแล้วปล่อยเพื่อเร่ง หลบสิ่งกีดขวางหรือกระโดดข้ามรั้วเตี้ย")}</p><details class="rr3-help"><summary>${t("Controls","วิธีบังคับ")}</summary><p>${t("Stick: drag to steer, release to center · S / ↓ brake · Space drift · Shift turbo · X hop · E use power · Q upgrade quiz · C camera · hold R for rear view.","จอยสติ๊ก: ลากเพื่อเลี้ยว ปล่อยเพื่อกลับตรง · S / ↓ เบรก · Space ดริฟต์ · Shift เทอร์โบ · X กระโดด · E ใช้พลัง · Q ควิซอัปเกรด · C กล้อง · กด R ค้างมองหลัง")}</p></details><div class="rr3-buttons">${mainButton("resume", t("Resume race", "แข่งต่อ"), "play")}${secondary("restart", t("Restart race", "เริ่มรอบใหม่"))}${secondary("lobby", t("Race menu", "เมนูแข่ง"))}</div></section>`;
   }
   return `<section class="rr3-center" aria-labelledby="rr3-modal"><h2 id="rr3-modal">${t("Settings", "การตั้งค่า")}</h2>
     <label class="rr3-option">${t("Rival difficulty", "ระดับคู่แข่ง")}<select data-pref="difficulty" ${wasPaused ? "disabled" : ""}><option value="rookie" ${settings.difficulty === "rookie" ? "selected" : ""}>${t("Rookie", "มือใหม่")}</option><option value="pro" ${settings.difficulty === "pro" ? "selected" : ""}>${t("Pro", "โปร")}</option></select></label>

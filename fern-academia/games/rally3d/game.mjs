@@ -118,6 +118,11 @@ export function launch3D(container, ctx, switchToClassic) {
   const standalone = typeof ctx.askQuestion !== "function" && ctx.mode !== "study";
   const keyHeld = new Set();
   const pointers = new Map();
+  const stick = find("[data-stick]");
+  const stickThumb = stick?.querySelector(".rr3-stick-thumb");
+  let stickSteer = 0;
+  let stickPointerId = null;
+  const STICK_DEAD = 0.08;
   let controller;
   let controllerDirection = 0;
   let repaint = true;
@@ -235,12 +240,63 @@ export function launch3D(container, ctx, switchToClassic) {
   function clearControls() {
     keyHeld.clear();
     pointers.clear();
+    resetStick();
     pad.suppress();
     controller = null;
     controllerDirection = 0;
     boostPulse = false;
     hopPulse = false;
     syncInputUI();
+  }
+
+  // Virtual steering stick: analog [-1, 1] from horizontal drag, springing
+  // back to center on release. It owns one pointer only — other fingers keep
+  // their own action buttons (multi-touch).
+  function updateStick(event) {
+    if (!stick) return;
+    const rect = stick.getBoundingClientRect();
+    const radius = rect.width / 2;
+    const dx = Math.max(-1, Math.min(1, (event.clientX - (rect.left + radius)) / radius));
+    const value = Math.abs(dx) < STICK_DEAD ? 0 : dx;
+    stickSteer = value;
+    if (stickThumb) stickThumb.style.transform = `translate(calc(-50% + ${value * radius * 0.42}px), -50%)`;
+    stick.dataset.on = String(value !== 0);
+    stick.setAttribute("aria-valuenow", String(Math.round(value * 100)));
+    stick.setAttribute("aria-valuetext", value === 0 ? t("Centered", "ตรงกลาง") : value < 0 ? t("Steering left", "เลี้ยวซ้าย") : t("Steering right", "เลี้ยวขวา"));
+  }
+
+  function resetStick() {
+    if (stickPointerId !== null) {
+      try { stick?.releasePointerCapture(stickPointerId); } catch { }
+      stickPointerId = null;
+    }
+    stickSteer = 0;
+    if (stickThumb) stickThumb.style.transform = "";
+    if (stick) {
+      stick.dataset.on = "false";
+      stick.setAttribute("aria-valuenow", "0");
+      stick.setAttribute("aria-valuetext", t("Centered", "ตรงกลาง"));
+    }
+  }
+
+  function stickStart(event) {
+    if (!stick || !driving() || stickPointerId !== null) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    stickPointerId = event.pointerId;
+    try { stick.setPointerCapture(event.pointerId); } catch { }
+    updateStick(event);
+  }
+
+  function stickMove(event) {
+    if (event.pointerId !== stickPointerId) return;
+    event.preventDefault();
+    updateStick(event);
+  }
+
+  function stickEnd(event) {
+    if (event.pointerId !== stickPointerId) return;
+    resetStick();
   }
 
   function resize() {
@@ -712,7 +768,7 @@ export function launch3D(container, ctx, switchToClassic) {
       const brake = pressed("brake") ? 1 : controller?.brake || 0;
       while (accumulator + 1e-8 >= FIXED && driving()) {
         stepRace(run, {
-          steer: (Number(pressed("right")) - Number(pressed("left"))) || controller?.steer || 0,
+          steer: stickSteer || (Number(pressed("right")) - Number(pressed("left"))) || controller?.steer || 0,
           drift: pressed("drift") || controller?.drift, brake, boost: boostPulse || pressed("boost"), hop: hopPulse || pressed("hop"),
         }, FIXED);
         boostPulse = false;
@@ -934,6 +990,11 @@ export function launch3D(container, ctx, switchToClassic) {
   for (const button of holdButtons) {
     button.addEventListener("pointerdown", holdStart, options);
     for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) button.addEventListener(type, holdEnd, options);
+  }
+  if (stick) {
+    stick.addEventListener("pointerdown", stickStart, options);
+    stick.addEventListener("pointermove", stickMove, options);
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) stick.addEventListener(type, stickEnd, options);
   }
   // A standard keyboard button activation still provides a momentary turbo.
   turbo.addEventListener("click", event => {

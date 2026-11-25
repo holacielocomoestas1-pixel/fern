@@ -83,7 +83,7 @@
 }
 .rr3-tools { display: flex; gap: 8px; align-items: center; }
 .rr3-toolbar :where(a,button) { pointer-events: auto; }
-.rr3-icon, .rr3-chip, .rr3-main, .rr3-secondary, .rr3-steer button, .rr3-actions button {
+.rr3-icon, .rr3-chip, .rr3-main, .rr3-secondary, .rr3-actions button {
   border: 1px solid var(--rr-border);
   color: var(--rr-white);
   background: var(--rr-pane);
@@ -289,20 +289,50 @@
   gap: 6px;
   pointer-events: none;
 }
-.rr3-steer, .rr3-actions { display: flex; align-items: end; gap: 7px; }
-.rr3-steer button, .rr3-actions button {
-  min-width: clamp(53px, 14vw, 78px);
-  height: clamp(57px, 15vw, 77px);
+.rr3-steer, .rr3-actions { display: flex; align-items: end; gap: 10px; }
+.rr3-stick {
+  width: clamp(104px, 27vw, 128px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  touch-action: none;
+  pointer-events: auto;
+  position: relative;
+  border: 1px solid var(--rr-border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.02) 42%, rgba(255,255,255,0) 62%),
+    radial-gradient(circle at 50% 42%, #1d4436, #0a1f18 78%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -10px 20px rgba(0,0,0,.38), 0 10px 24px rgba(0,0,0,.34);
+}
+.rr3-stick[data-on="true"] { border-color: var(--rr-mint); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -10px 20px rgba(0,0,0,.38), 0 10px 24px rgba(0,0,0,.34), 0 0 18px rgba(210,255,209,.28); }
+.rr3-stick:focus-visible { outline: 2px solid var(--rr-warm); outline-offset: 4px; }
+.rr3-stick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 28%, #f2ffdf, #b7e5a4 46%, #6fae7e 88%);
+  border: 1px solid #edffe44a;
+  box-shadow: 0 5px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.65);
+  transition: box-shadow 120ms ease;
+}
+.rr3-stick[data-on="true"] .rr3-stick-thumb { box-shadow: 0 5px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.7), 0 0 14px rgba(210,255,209,.45); }
+.rr3-actions button {
+  min-width: clamp(64px, 16vw, 84px);
+  height: clamp(64px, 17vw, 84px);
   touch-action: none;
   pointer-events: auto;
   padding: 6px;
   flex-direction: column;
   line-height: 1.05;
   overflow: hidden;
+  transition: transform 80ms ease-out, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
-.rr3-steer button svg { width: 27px; height: 27px; }
-.rr3-actions button { position: relative; font-size: .78rem; }
+.rr3-actions button:active { transform: scale(.94); }
 .rr3-actions button svg { width: 21px; height: 21px; }
+.rr3-actions button { position: relative; font-size: .78rem; }
 .rr3-controls button[data-on="true"] { background: #7ab394c9; color: #0c2317; border-color: var(--rr-mint); }
 .rr3-controls button[data-ready="true"] { color: var(--rr-ink); background: #d8ffaf; border-color: #e9ffce; box-shadow: 0 0 20px #c1ff7d6e; }
 .rr3-controls button:disabled { opacity: .63; }
@@ -423,16 +453,25 @@
   .rr3-map { width: 82px; height: 61px; }
   .rr3-stat { min-width: 45px; padding: 7px 6px; }
   .rr3-stat strong { font-size: .99rem; }
-  .rr3-controls { gap: 8px; }
+  .rr3-controls { gap: 6px; left: max(9px, env(safe-area-inset-left, 0px)); right: max(9px, env(safe-area-inset-right, 0px)); }
   .rr3-steer,.rr3-actions { gap: 4px; }
-  .rr3-steer button,.rr3-actions button { height: 57px; min-width: clamp(43px, 12.1vw, 59px); padding-inline: 3px; }
+  .rr3-stick { width: clamp(96px, 24vw, 108px); }
+  .rr3-actions button { height: 64px; min-width: clamp(64px, 16vw, 72px); padding-inline: 3px; }
   .rr3-actions button { font-size: clamp(.69rem,2.9vw,.82rem); }
   .rr3-power button { min-height: 44px; padding-inline: 8px; font-size: .8rem; }
   .rr3-power button svg { width: 16px; height: 16px; }
   .rr3-stamp .rr3-chip { min-width: 44px; }
 }
+@media (max-width: 389px) {
+  .rr3-controls { gap: 4px; }
+  .rr3-steer,.rr3-actions { gap: 3px; }
+  .rr3-stick { width: 84px; }
+  .rr3-actions button { height: 64px; min-width: 58px; }
+}
 @media (max-width: 355px) {
   .rr3 { --rr-safe-left: max(10px, env(safe-area-inset-left)); --rr-safe-right: max(10px, env(safe-area-inset-right)); }
+  .rr3-stick { width: 80px; }
+  .rr3-actions button { min-width: 54px; }
   .rr3-toolbar,.rr3-tools { gap: 4px; }
   .rr3-stat small { font-size: .62rem; }
   .rr3-trackline { grid-template-columns: 37px minmax(0,1fr) auto; }
@@ -448,7 +487,8 @@
   .rr3-power { bottom: calc(var(--rr-safe-bottom) + 63px); }
   .rr3-power:not([hidden]) ~ .rr3-coach { bottom: calc(var(--rr-safe-bottom) + 120px); }
   .rr3-coach { bottom: calc(var(--rr-safe-bottom) + 59px); }
-  .rr3-steer button, .rr3-actions button { height: 57px; min-width: 57px; }
+  .rr3-stick { width: 96px; }
+  .rr3-actions button { height: 64px; min-width: 64px; }
   .rr3-map { width: 92px; height: 64px; }
   .rr3-result h2 { font-size: clamp(2.6rem, 11vh, 5rem); }
 }
