@@ -1,4 +1,4 @@
-import { COURSES, TURBO_COST, POWER_INFO, beginPowerQuiz, createRace, pose, resolvePowerQuiz, resolveStudy, resultFor, stepRace, usePower } from "./model.mjs";
+import { COURSES, TURBO_COST, POWER_INFO, beginPowerQuiz, createRace, perfectStart, pose, resolvePowerQuiz, resolveStudy, resultFor, stepRace, usePower } from "./model.mjs";
 import { createWorld } from "./world.mjs";
 import { createKarts } from "./karts.mjs";
 import { createRenderer } from "./renderer.mjs";
@@ -166,6 +166,10 @@ export function launch3D(container, ctx, switchToClassic) {
   let renderClock = 0;
   let messageUntil = 0;
   let boostPulse = false;
+  let trauma = 0;
+  let lastBoostPress = -10;
+  let launchBoostHeld = false;
+  let launchBoostQueued = false;
   let scaleDown = 1;
   let frameCost = 16;
   let perfClock = 0;
@@ -237,10 +241,10 @@ export function launch3D(container, ctx, switchToClassic) {
     for (const button of holdButtons) button.dataset.on = String(pressed(button.dataset.hold));
   }
 
-  function clearControls() {
+  function clearControls({ keepStick = false } = {}) {
     keyHeld.clear();
     pointers.clear();
-    resetStick();
+    if (!keepStick) resetStick();
     pad.suppress();
     controller = null;
     controllerDirection = 0;
@@ -280,7 +284,9 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function stickStart(event) {
-    if (!stick || !driving() || stickPointerId !== null) return;
+    // The stick also works during the countdown (controls are only visible
+    // in run/grid), so the kart can leave the line already steering.
+    if (!stick || (!driving() && phase !== "grid") || stickPointerId !== null) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     stickPointerId = event.pointerId;
@@ -353,7 +359,9 @@ export function launch3D(container, ctx, switchToClassic) {
     const userHUD = stats || phase === "pause" && suspended?.phase === "run";
     hud.hidden = !userHUD;
     speedTag.hidden = !userHUD;
-    controls.hidden = !driving();
+    // The driving controls stay visible during the countdown: the turbo
+    // button is the only way to time a launch boost or hold it on touch.
+    controls.hidden = !["run", "grid"].includes(phase);
     rankTag.hidden = mode === "trial";
     scene.dataset.phase = phase;
     scene.dataset.calm = String(reduced());
@@ -388,10 +396,14 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function phaseTo(next, elapsed = 0, focus = true) {
+    // A stick held through the countdown keeps steering across the GO:
+    // resetting it there would straighten a kart the player is already
+    // turning (and drop all later moves for that finger).
+    const keepStick = phase === "grid" && next === "run" && stickPointerId !== null;
     phase = next;
     phaseTime = elapsed;
     accumulator = 0;
-    clearControls();
+    clearControls({ keepStick });
     audio.setPhase(next === "settings" || next === "lost" ? "paused" : next);
     paintPanel(focus);
     paintCoach();
@@ -469,6 +481,9 @@ export function launch3D(container, ctx, switchToClassic) {
     samples = [];
     ghostInterval = Math.max(.18, course.length * run.laps / (course.cruise * 950));
     countdown = 0;
+    launchBoostQueued = false;
+    launchBoostHeld = false;
+    lastBoostPress = -10;
     best = false;
     ranks = [];
     const quick = skip || reduced();
@@ -619,11 +634,18 @@ export function launch3D(container, ctx, switchToClassic) {
           const name = POWER_INFO[event.kind]?.[lang];
           if (name) say(name + (event.level > 1 ? " II" : ""),1.25);
         } else if (event.type === "hazard" && !event.blocked) {
+          trauma = Math.min(1, trauma + .3);
           const kind = { slick: t("Slippery surface","พื้นลื่น"), hurdle: t("Hop over low gates","กระโดดข้ามรั้วเตี้ย"), sweeper: t("Watch the moving gate","ระวังประตูเคลื่อนที่"), slalom: t("Dodge the barriers","หลบสิ่งกีดขวาง") }[event.kind];
           if (kind) say(kind,1.6);
         }
-      } else if (["boost","pickup","hit","offroad"].includes(event.type)) {
+      } else if (["boost","pickup","hit","offroad","bump"].includes(event.type)) {
         audio.play(event.type,event);
+        if (event.type === "hit") trauma = Math.min(1, trauma + .5 * (event.strength || .5));
+        else if (event.type === "offroad") {
+          trauma = Math.min(1, trauma + .25);
+          say(t("Off the track!", "ออกนอกถนน!"), 1.4);
+        }
+        else if (event.type === "bump") trauma = Math.min(1, trauma + .35 * (event.strength || .5));
       }
     }
   }
@@ -658,6 +680,16 @@ export function launch3D(container, ctx, switchToClassic) {
       pose: vehicles[0], mode: driving() && (pressed("rear") || controller?.rear) ? "rear" : cameraMode, reducedMotion: reduced(), dt,
       aspect: dimensions?.height ? dimensions.width / dimensions.height : 16 / 9,
     });
+    // Camera shake from hits, hazards, bumps and off-track moments. The
+    // trauma value is fed by processEvents and decays in frame().
+    if (trauma > .01 && driving() && !reduced()) {
+      const shake = trauma * trauma;
+      camera.x += (Math.random() * 2 - 1) * .10 * shake;
+      camera.y += (Math.random() * 2 - 1) * .08 * shake;
+      camera.tx += (Math.random() * 2 - 1) * .14 * shake;
+      camera.tz += (Math.random() * 2 - 1) * .14 * shake;
+      camera.roll = (camera.roll || 0) + (Math.random() * 2 - 1) * .014 * shake;
+    }
     if (camera.shot === "bumper") camera.hidePlayer = true;
     if (scene.dataset.shot !== camera.shot) {
       scene.dataset.shot = camera.shot;
@@ -670,9 +702,10 @@ export function launch3D(container, ctx, switchToClassic) {
       const ghost = ghostAt(ghosts, run.time);
       if (ghost && Math.hypot(ghost.x - vehicles[0].x, ghost.z - vehicles[0].z) > 1.5) vehicles.push(ghost);
     }
+    const streak = !driving() || reduced() ? 0 : run.player.boost > 0 ? .88 : run.player.speed > 30 ? .22 : 0;
     renderer.draw({
       camera, vehicles, time: renderClock,
-      boost: driving() && !reduced() && run.player.boost > 0 ? .88 : 0,
+      boost: streak,
       effects: { pickups, collectedItems: run.collectedItems, lap, raceTime: run.time, itemsEnabled: mode !== "trial", calm: reduced() },
     });
     if (userHudDue()) {
@@ -722,6 +755,7 @@ export function launch3D(container, ctx, switchToClassic) {
       else pauseGame();
       return;
     }
+    if (phase === "grid" && snapshot.pressed.has("boost")) lastBoostPress = settledTime;
     if (!driving()) return;
     if (snapshot.pressed.has("quiz") && run.player.power && !run.player.power.quizOffered) {
       upgradeQuiz();
@@ -746,6 +780,8 @@ export function launch3D(container, ctx, switchToClassic) {
     const beforeControl = phase;
     pollController();
     settledTime += elapsed;
+    // Camera shake decays over time.
+    trauma = Math.max(0, trauma - elapsed * 1.7);
     if (phase === beforeControl) phaseTime += elapsed;
     if (animated()) renderClock += delta;
     if (phase === "intro" && phaseTime >= INTRO_SECONDS) toGrid();
@@ -753,6 +789,10 @@ export function launch3D(container, ctx, switchToClassic) {
       const left = Math.ceil(GRID_TIME - phaseTime);
       if (left <= 0) {
         phaseTo("run", 0, false);
+        // Turbo pressed right at GO earns a launch boost; a turbo held
+        // through the countdown queues the manual turbo for the launch.
+        if (settledTime - lastBoostPress <= .35) perfectStart(run);
+        if (launchBoostHeld || controller?.held?.has("boost")) launchBoostQueued = true;
         audio.play("go");
         newCount(panel, t("GO!", "ไป!"));
         saveSample(true);
@@ -769,7 +809,7 @@ export function launch3D(container, ctx, switchToClassic) {
       while (accumulator + 1e-8 >= FIXED && driving()) {
         stepRace(run, {
           steer: stickSteer || (Number(pressed("right")) - Number(pressed("left"))) || controller?.steer || 0,
-          drift: pressed("drift") || controller?.drift, brake, boost: boostPulse || pressed("boost"), hop: hopPulse || pressed("hop"),
+          drift: pressed("drift") || controller?.drift, brake, boost: boostPulse || pressed("boost") || launchBoostQueued, hop: hopPulse || pressed("hop"),
         }, FIXED);
         boostPulse = false;
         hopPulse = false;
@@ -777,6 +817,9 @@ export function launch3D(container, ctx, switchToClassic) {
         saveSample();
         processEvents();
       }
+      // The queued launch turbo fires as soon as the kart is moving; drop
+      // it then so a later press is a fresh edge.
+      if (launchBoostQueued && run.player.speed > 5) launchBoostQueued = false;
       if (driving()) audio.update({ speed: run.player.speed, boost: run.player.boost > 0, drift: run.player.drift,
         brake, offroad: run.player.friction, airborne: run.player.airborne, steer: run.player.steer });
     } else if (phase === "finish" && phaseTime >= FINISH_SECONDS) {
@@ -926,6 +969,12 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function holdStart(event) {
+    if (phase === "grid" && event.button === 0 && event.currentTarget.dataset.hold === "boost" && !event.currentTarget.disabled) {
+      event.preventDefault();
+      lastBoostPress = settledTime;
+      launchBoostHeld = true;
+      return;
+    }
     if (!driving() || event.button !== 0 || event.currentTarget.disabled) return;
     const action = event.currentTarget.dataset.hold;
     event.preventDefault();
@@ -937,6 +986,7 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function holdEnd(event) {
+    if (event.currentTarget.dataset.hold === "boost") launchBoostHeld = false;
     if (pointers.delete(event.pointerId)) syncInputUI();
   }
 
@@ -965,6 +1015,15 @@ export function launch3D(container, ctx, switchToClassic) {
       else if (active() && !event.repeat) pauseGame();
       else return;
       event.preventDefault();
+      return;
+    }
+    if (phase === "grid" && KEYS[event.code] === "boost") {
+      // A turbo press during the countdown counts for the launch: a tap
+      // timed at GO earns a perfect start, holding it queues the turbo.
+      // (The generic guard below discards all input while not driving.)
+      event.preventDefault();
+      if (!event.repeat) lastBoostPress = settledTime;
+      launchBoostHeld = true;
       return;
     }
     if (!driving()) return;
@@ -1002,7 +1061,10 @@ export function launch3D(container, ctx, switchToClassic) {
   }, options);
   hopButton.addEventListener("click", event => { if (event.detail === 0 && driving()) hopPulse = true; }, options);
   window.addEventListener("keydown", keyboardDown, options);
-  window.addEventListener("keyup", event => { if (keyHeld.delete(event.code)) syncInputUI(); }, options);
+  window.addEventListener("keyup", event => {
+    if (KEYS[event.code] === "boost") launchBoostHeld = false;
+    if (keyHeld.delete(event.code)) syncInputUI();
+  }, options);
   window.addEventListener("gamepadconnected", callFrame, options);
   window.addEventListener("blur", () => { clearControls(); pauseGame(); }, options);
   document.addEventListener("visibilitychange", () => {

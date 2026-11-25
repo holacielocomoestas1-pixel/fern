@@ -127,7 +127,8 @@ function applyDrift(run, input, dt, steer, onRoad) {
   if (!car.drift) return;
   if (car.driftTier && onRoad) {
     run.drifts++;
-    chargeTurbo(run, [.0, .23, .40, .63][car.driftTier]);
+    // A drift pays in boost, not in charge: refunding both made turbo
+    // near-permanent (audit: 82 turbos in one 170 s race, +767 m win).
     activate(run, car, [0, .92, 1.34, 1.72][car.driftTier], 'drift', car.driftTier);
   }
   run.events.push({ type: 'drift', active: false, tier: car.driftTier });
@@ -162,7 +163,9 @@ function drivePlayer(run, input, dt) {
     chargeTurbo(run, -TURBO_COST);
     activate(run, car, 2.08, 'manual', 2);
   }
-  car.boostingInput = !!input.boost;
+  // Latch only once the kart is moving: holding turbo through the countdown
+  // used to swallow the press, so it never fired at the start.
+  car.boostingInput = !!input.boost && car.speed > 5;
   applyDrift(run, input, dt, steer, onRoad);
 
   const maxLateral = (car.drift ? 9.4 : 10.2) * (car.slick ? .49 : car.grip ? 1.08 : 1) * (car.jumpY > .08 ? .72 : 1);
@@ -175,7 +178,17 @@ function drivePlayer(run, input, dt) {
   car.sideSpeed = smooth(car.sideSpeed, desiredSide, dt, car.drift ? 5.2 : 10.8);
   const cap = width + 2.1;
   car.offset = clamp(car.offset + car.sideSpeed * dt, -cap, cap);
-  if (Math.abs(car.offset) >= cap && Math.sign(car.sideSpeed) === Math.sign(car.offset)) car.sideSpeed *= .63;
+  if (Math.abs(car.offset) >= cap && Math.sign(car.sideSpeed) === Math.sign(car.offset)) {
+    // The verge is a wall now, not a cushion: bounce back in, scrub speed,
+    // and report the bump once per hit.
+    const impact = Math.abs(car.sideSpeed);
+    car.sideSpeed = -car.sideSpeed * .38;
+    car.speed *= impact > 6 ? .985 : .995;
+    if (impact > 4 && car.contact <= 0) {
+      car.contact = .35;
+      run.events.push({ type: 'bump', strength: Math.min(1, impact / 12) });
+    }
+  }
   car.steer = smooth(car.steer, steer, dt, 14);
   const counter = car.drift ? car.driftSign * -.23 : 0;
   car.yawOffset = smooth(car.yawOffset, Math.atan2(car.sideSpeed, Math.max(9, car.speed)) * .62 + counter + skate * .048, dt, 7.5);
@@ -191,7 +204,7 @@ function drivePlayer(run, input, dt) {
   const cornerGrip = car.grip ? (car.gripLevel === 2 ? .38 : .67) : 1;
   const turnPenalty = Math.min(.25, Math.abs(f.curve) * (car.drift ? 2.4 : 4.6) * cornerGrip);
   const brake = clamp(Number(input.brake) || 0, 0, 1);
-  const vergeFactor = 1 - car.friction * (car.grip ? .12 : .59);
+  const vergeFactor = 1 - car.friction * (car.grip ? .12 : .66);
   const impaired = car.slow > 0 ? .70 : car.slick > 0 ? .90 : 1;
   const thrust = car.boost > 0 ? 11.6 + (car.comet ? 2.1 : 0) : 0;
   const targetSpeed = (track.cruise * (1 - turnPenalty) - f.dy * 3.4 + (car.drafting ? 1 : 0) +
@@ -238,7 +251,10 @@ function driveRival(run, car, dt) {
   const targetSpeed = (course.cruise * car.pace * (1 - penalty) +
     .46 * Math.sin(car.s / 28 + car.phase) - f.dy * 3.2 + (car.boost > 0 ? 7.9 : 0)) *
     (car.slow > 0 ? .70 : car.slick > 0 ? .90 : 1);
-  const breathing = Math.min(.32, Math.max(-.32, (run.player.s - car.s) * .009));
+  // Rubber-banding: rivals far behind the player catch up, rivals far ahead
+  // ease off. v8.1's ±.32 was too weak to matter (a 5 s stop cost only 2.7 s).
+  const gap = run.player.s - car.s;
+  const breathing = gap >= 0 ? Math.min(1.4, gap * .02) : Math.max(-.8, gap * .02);
   car.speed = smooth(car.speed, targetSpeed + breathing, dt, 2.53);
   advance(car, f, dt);
 }
@@ -262,8 +278,15 @@ function spreadKarts(run, dt) {
       if (i === 0 && a.contact <= 0 && (Math.abs(a.speed - b.speed) > 1.5 || Math.abs(a.sideSpeed) > 4.2)) {
         a.contact = .44;
         b.contact = Math.max(b.contact, .25);
-        a.speed *= a.boost > 0 ? .978 : .935;
-        b.speed *= .974;
+        a.speed *= a.boost > 0 ? .96 : .90;
+        b.speed *= .95;
+        // Knockback: shove both karts apart sideways and jolt their heading,
+        // so a hit reads instead of sliding through.
+        const kick = (side < 0 ? -1 : 1) * 2.4;
+        a.sideSpeed += kick;
+        b.sideSpeed -= kick;
+        a.yawOffset += (side < 0 ? -1 : 1) * .05;
+        b.yawOffset -= (side < 0 ? -1 : 1) * .08;
         run.hits++;
         run.events.push({ type: 'hit', rival: b.id, strength: Math.min(1, Math.abs(a.sideSpeed) / 8 + .3) });
       }
@@ -367,6 +390,13 @@ export function resolveStudy(run, correct) {
   run.correct++;
   chargeTurbo(run, .28);
   activate(run, run.player, 2.45, 'study', 3);
+}
+
+export function perfectStart(run) {
+  if (!run || run.finished) return false;
+  run.player.boost = Math.max(run.player.boost, 1.4);
+  run.events.push({ type: 'boost', source: 'start', tier: 2 });
+  return true;
 }
 
 export function resultFor(run) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSES, createRace, pose, resolveStudy, resultFor, stepRace, usePower, hazardOffset } from './model.mjs';
+import { COURSES, createRace, perfectStart, pose, resolveStudy, resultFor, stepRace, usePower, hazardOffset } from './model.mjs';
 
 const STEP = 1 / 60;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
@@ -105,9 +105,42 @@ test('drift charges the tier indicator and converts release to a brief turbo', (
   const meter = run.player.boostCharge;
   stepRace(run, { steer: .05, drift: false });
   assert.equal(run.player.drift, false);
-  assert.ok(run.player.boostCharge > meter);
+  // A drift pays in boost, not in charge: refunding both made turbo
+  // near-permanent (audit: 82 turbos in one 170 s race).
+  assert.ok(run.player.boostCharge <= meter + 1e-9);
   assert.ok(run.player.boost > .8);
   assert.ok(run.events.some(event => event.type === 'boost' && event.source === 'drift'));
+});
+
+test('holding turbo from a standstill fires once the kart is moving', () => {
+  const run = createRace(COURSES[0], { mode: 'trial' });
+  Object.assign(run.player, { speed: 0, boostCharge: 1, s: 18 });
+  let manual = 0;
+  for (let i = 0; i < 240; i++) {
+    stepRace(run, { boost: true });
+    manual += run.events.splice(0).filter(event => event.source === 'manual').length;
+  }
+  assert.equal(manual, 1);
+  assert.ok(run.player.speed > 5);
+});
+
+test('perfect start grants a launch boost', () => {
+  const run = createRace(COURSES[0], { mode: 'trial' });
+  assert.equal(perfectStart(run), true);
+  assert.ok(run.player.boost >= 1.4);
+  assert.ok(run.events.some(event => event.type === 'boost' && event.source === 'start'));
+});
+
+test('track edge bounces the kart back with a bump', () => {
+  const run = createRace(COURSES[0], { mode: 'trial' });
+  Object.assign(run.player, { speed: 21, s: 18 });
+  let bounced = false;
+  for (let i = 0; i < 180; i++) {
+    stepRace(run, { steer: 1 });
+    if (Math.abs(run.player.offset) >= run.course.halfWidth + 2.05 && run.player.sideSpeed < 0) bounced = true;
+  }
+  assert.ok(bounced, 'kart bounces off the verge');
+  assert.ok(run.events.some(event => event.type === 'bump'));
 });
 
 test('manual turbo consumes charge once per press and offroad state lowers speed', () => {

@@ -64,7 +64,8 @@ function chase(course, player, pose, mode, reduced, time, aspect) {
   const distance = (wide ? 10.2 : 6.5) + speed * (reduced ? .01 : .023) + portrait * 1.05;
   const before = trackBasis(course, player.s - distance);
   const forward = trackBasis(course, player.s + (wide ? 13 : 10) + speed * .09);
-  const vibration = boost && mode !== "wide" ? .018 * Math.sin(time * 40) : 0;
+  const fast = !reduced && speed > 34;
+  const vibration = (boost || fast) && mode !== "wide" ? (boost ? .018 : .010) * Math.sin(time * 40) : 0;
   const lateral = clamp(offset * .8 - steering * .28 + vibration, -limit, limit);
   const eye = onTrack(before, lateral, (wide ? 4.9 : 3.18) + speed * .01);
   const target = onTrack(forward, offset * .62, wide ? .50 : .85);
@@ -74,7 +75,7 @@ function chase(course, player, pose, mode, reduced, time, aspect) {
   target.z = mix(aligned.z, target.z, lookBias);
   target.y = mix(aligned.y, target.y, .68);
   const roll = reduced ? 0 : clamp((pose.roll || 0) * .14 + steering * .01 + (position.bank || 0) * .07, -.048, .048);
-  const base = (wide ? 61 : 57) + (boost ? 6 : 0) + 11 * portrait;
+  const base = (wide ? 61 : 57) + (boost ? 6 : 0) + (reduced ? 0 : Math.min(4, speed * .09)) + 11 * portrait;
   const widthFloor = 2 * Math.atan(.38 / Math.max(.35, aspect)) * 180 / PI;
   const fov = Math.max(base, widthFloor);
   if (portrait > 0) {

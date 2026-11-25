@@ -26,15 +26,15 @@ export function createGamepad(getPads = () => globalThis.navigator?.getGamepads?
     const valid = devices.filter(device => device?.connected !== false && device?.mapping === "standard");
     const device = valid.find(candidate => candidate.index === slot) || valid[0];
     const pressed = new Set();
+    const held = new Set();
     if (!device) {
       slot = null;
       previous.clear();
       discardEdges = true;
-      return { connected: false, steer: 0, brake: 0, drift: false, rear: false, pressed };
+      return { connected: false, steer: 0, brake: 0, drift: false, rear: false, pressed, held };
     }
     if (device.index !== slot) discardEdges = true;
     slot = device.index;
-    const held = new Set();
     for (const [index, action] of actions) {
       if (button(device, index) <= .55) continue;
       held.add(action);
@@ -46,7 +46,7 @@ export function createGamepad(getPads = () => globalThis.navigator?.getGamepads?
     return {
       connected: true, steer: digital || axis(device.axes?.[0]), brake: Math.max(0, clamp(button(device, 6))),
       drift: Math.max(button(device, 5), button(device, 7)) > .35,
-      rear: button(device, 4) > .5, pressed,
+      rear: button(device, 4) > .5, pressed, held,
     };
   }
   return { read, suppress() { discardEdges = true; } };

@@ -133,6 +133,9 @@
   letter-spacing: -.085em;
   text-wrap: nowrap;
   filter: drop-shadow(0 5px 20px #081d17a8);
+  /* Decorative title only: its hitbox overlaps the mode chips below it
+     on wide screens, so clicks must fall through to the buttons. */
+  pointer-events: none;
 }
 .rr3-menu h1 span { color: var(--rr-mint); }
 .rr3:lang(th) .rr3-menu h1, .rr3[lang="th"] .rr3-menu h1 { font-size: clamp(2.35rem, 8.6vw, 6.3rem); letter-spacing: -.025em; line-height: 1.1; }
@@ -246,7 +249,7 @@
 }
 .rr3-speed strong { font-size: clamp(1.6rem, 5vw, 2.55rem); font-weight: 900; line-height: .9; font-style: italic; }
 .rr3-speed small { color: #ecffe0; font-size: .72rem; font-weight: bold; }
-.rr3-power:not([hidden]) ~ .rr3-speed { left: var(--rr-safe-left); transform: none; }
+.rr3-power:not([hidden]) ~ .rr3-speed { left: var(--rr-safe-left); transform: none; bottom: calc(var(--rr-safe-bottom) + 168px); }
 .rr3-power {
   position: absolute;
   z-index: 6;

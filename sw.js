@@ -1,6 +1,6 @@
 'use strict';
 /* Fern service worker — app shell offline. Generado por gen-sw.js; no editar a mano. */
-const CACHE = 'fern-v8.1';
+const CACHE = 'fern-v8.2';
 const SHELL = [
   './',
   'index.html',

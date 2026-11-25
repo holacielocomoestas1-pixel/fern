@@ -10,6 +10,7 @@ test("standard controller reports each face action once, including across pause 
   device.buttons[0] = 1;
   assert.deepEqual([...pad.read().pressed], ["item"]);
   assert.equal(pad.read().pressed.size, 0);
+  assert.ok(pad.read().held.has("item"));
   device.buttons[2] = 1;
   pad.suppress();
   assert.equal(pad.read().pressed.size, 0);
