@@ -1,0 +1,101 @@
+/* Tour guiado de primera apertura (v6.0, Fase 1).
+   Vidrio KITE existente: vars de fern.css (--glass-strong, --glass-spec,
+   --glass-blur, --glass-border, --shadow, --spring-entrar, --t-entrar).
+   Verde intacto, sin degradados nuevos, sin tocar imágenes. */
+
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95; /* por encima de modales (40) y toasts (52); el login (90) no coincide nunca con el tour */
+  touch-action: none;
+  /* Sin fondo propio: el oscurecido lo hace la sombra gigante de .tour-spot. */
+}
+
+/* Recorte luminoso sobre el objetivo: el anillo verde marca el elemento y
+   la sombra de 9999px oscurece todo lo demás. */
+.tour-spot {
+  position: fixed;
+  display: none;
+  border: 2px solid var(--green);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 9999px rgba(4, 20, 14, .62),
+    0 0 0 1px rgba(201, 239, 185, .25),
+    0 8px 28px rgba(0, 0, 0, .45);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    top var(--t-entrar) var(--spring-entrar),
+    left var(--t-entrar) var(--spring-entrar),
+    width var(--t-entrar) var(--spring-entrar),
+    height var(--t-entrar) var(--spring-entrar),
+    opacity 200ms ease;
+}
+
+/* Tarjeta de cristal «héroe» (misma receta que el login y los modales v5.2):
+   tinte verdoso + especular + filo de luz. La posición la fija tour.js. */
+.tour-card {
+  position: fixed;
+  width: min(416px, calc(100vw - 24px));
+  max-height: min(62vh, 420px);
+  overflow: auto;
+  padding: 18px 18px 16px;
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 24px 48px rgba(0, 0, 0, .5);
+  color: var(--ink);
+  opacity: 0;
+  transition:
+    top var(--t-entrar) var(--spring-entrar),
+    left var(--t-entrar) var(--spring-entrar),
+    opacity 200ms ease;
+}
+
+.tour-overlay.tour-positioned .tour-spot,
+.tour-overlay.tour-positioned .tour-card {
+  opacity: 1;
+}
+
+.tour-count {
+  margin: 0 0 6px;
+  color: var(--mut);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.tour-title {
+  margin: 0 0 6px;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+
+.tour-text {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.tour-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Los botones reutilizan .btn / .btn.ghost de fern.css. */
+.tour-actions .btn {
+  flex: 1;
+  min-height: 48px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot,
+  .tour-card {
+    transition: none;
+  }
+}

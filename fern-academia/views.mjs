@@ -1,4 +1,5 @@
 import { SUBJECTS, EXAM_SOURCE, daysUntil, productDate, subjectStats, dateStreak } from "./core.mjs";
+import { teachBlocksHtml, listenButton } from "./teach.js";
 
 // v4.4: color propio de cada materia (misma paleta que la app principal).
 const SUBJ_COLORS = { general: "#ff9600", thai: "#ff4b8f", it: "#1cb0f6", saraban: "#a560e8", law: "#ff4b4b", english: "#58cc02" };
@@ -176,9 +177,11 @@ export function lessonView(ctx, id) {
   const practice = catalog.byLesson[id] > 0;
   return `<article class="article">${backlink(esc(subject[lang]), `#library/${subject.id}`)}
     ${heading(esc(lesson.title[lang]), esc(lesson.summary[lang]))}
+    ${teachBlocksHtml(ctx, lesson)}
     ${lesson.sections.map(section => `<section class="article-section"><h2>${esc(section.title[lang])}</h2><p>${esc(section.text[lang])}</p></section>`).join("")}
     ${sources(ctx, lesson.sources)}
-    <div class="inline-actions section"><button type="button" class="act ${practice ? "ghost" : "solid"}" data-action="lesson-done" data-id="${id}" aria-pressed="${done}">${done ? `${icon("check")}${t("อ่านแล้ว", "Marked as read")}` : t("ทำเครื่องหมายว่าอ่านแล้ว", "Mark as read")}</button>${practice ? `<button type="button" class="act solid" data-action="lesson-practice" data-id="${id}">${t("ลองทำข้อฝึกบทนี้", "Try this chapter’s questions")}</button>` : ""}</div>
+    ${practice ? `<p class="subtle teach-minicheck-note">${t("อ่านจบแล้ว ลองเช็กสั้น ๆ 2 ข้อเพื่อจำให้แน่น — ไม่คิดคะแนน จบแล้วบทนี้จะถูกทำเครื่องหมายว่าอ่านแล้ว", "Finished reading? Try a quick 2-question check to lock it in — no score, and the chapter is marked as read when you finish.")}</p>` : ""}
+    <div class="inline-actions section"><button type="button" class="act ${practice ? "ghost" : "solid"}" data-action="lesson-done" data-id="${id}" aria-pressed="${done}">${done ? `${icon("check")}${t("อ่านแล้ว", "Marked as read")}` : t("ทำเครื่องหมายว่าอ่านแล้ว", "Mark as read")}</button>${practice ? `<button type="button" class="act solid" data-action="lesson-minicheck" data-id="${id}">${t("เช็กสั้น ๆ 2 ข้อ", "Quick 2-question check")}</button><button type="button" class="act ghost" data-action="lesson-practice" data-id="${id}">${t("ลองทำข้อฝึกบทนี้", "Try this chapter’s questions")}</button>` : ""}</div>
   </article>`;
 }
 
@@ -224,7 +227,7 @@ export function cardsView(ctx, id) {
       return `${heading(t("ทบทวนเสร็จแล้ว", "Review complete"), t("เฟิร์นจัดเวลาทบทวนของแต่ละใบให้แล้ว", "Fern has scheduled your next review for these cards."))}<div class="inline-actions section"><button class="act solid" type="button" data-action="close-cards">${t("กลับไปที่แฟลชการ์ด", "Back to flashcards")}</button></div>`;
     }
     return `${heading(t("แฟลชการ์ด", "Flashcards"), `${n(cardRound.index + 1)} / ${n(cardRound.cards.length)}`)}
-    <div class="study-card"><p class="eyebrow">${esc(SUBJECTS.find(s => s.id === card.subject)[lang])}</p><h2>${esc(card.front[lang])}</h2>${cardRound.open ? `<p class="back">${esc(card.back[lang])}</p>${sources(ctx, card.sources)}` : ""}</div>
+    <div class="study-card"><p class="eyebrow">${esc(SUBJECTS.find(s => s.id === card.subject)[lang])}</p><h2>${esc(card.front[lang])}</h2><div class="teach-listen-row">${listenButton(`card-${card.id}-front`, card.front.th, t("ฟัง", "Listen"))}</div>${cardRound.open ? `<p class="back">${esc(card.back[lang])}</p><div class="teach-listen-row">${listenButton(`card-${card.id}-back`, card.back.th, t("ฟัง", "Listen"))}</div>${sources(ctx, card.sources)}` : ""}</div>
     <div class="inline-actions">${cardRound.open ? `<button class="act ghost" type="button" data-action="card-rate" data-value="again">${t("ยังจำไม่ได้", "Review again")}</button><button class="act solid" type="button" data-action="card-rate" data-value="ok">${t("จำได้", "I remembered")}</button>` : `<button class="act solid" type="button" data-action="flip-card">${t("พลิกดูคำตอบ", "Reveal answer")}</button>`}<button class="text-button" type="button" data-action="close-cards">${t("จบการทบทวน", "End review")}</button></div>`;
   }
   const selected = SUBJECTS.some(subject => subject.id === id) ? id : "all";
@@ -278,15 +281,41 @@ export function progressView(ctx) {
   const { t, lang, n, catalog, state } = ctx;
   const attempts = Object.values(state.questions).reduce((total, row) => total + row.seen, 0);
   const hits = Object.values(state.questions).reduce((total, row) => total + row.hits, 0);
+  // v6.0 «Cómo vamos»: una sola fuente de verdad (state). Dominio por materia
+  // = 70% precisión en preguntas + 30% capítulos leídos; sin intentos, solo
+  // cuenta lo leído. Siguiente paso = capítulo sin leer de la materia más
+  // débil, o el primer capítulo sin leer; si todo está leído, repasar errores.
+  const perSubject = SUBJECTS.map(subject => {
+    const stats = subjectStats(state.questions, subject.id);
+    const chapters = catalog.lessons.filter(lesson => lesson.subject === subject.id);
+    const read = chapters.filter(lesson => state.lessons[lesson.id]).length;
+    const coverage = chapters.length ? Math.round(read * 100 / chapters.length) : 0;
+    const mastery = stats.attempts ? Math.round(stats.accuracy * 0.7 + coverage * 0.3) : Math.round(coverage * 0.3);
+    return { subject, stats, chapters, read, coverage, mastery };
+  });
+  const weak = perSubject.filter(row => row.stats.attempts > 0).sort((a, b) => a.stats.accuracy - b.stats.accuracy)[0];
+  const unread = catalog.lessons.filter(lesson => !state.lessons[lesson.id]);
+  const nextLesson = (weak ? unread.find(lesson => lesson.subject === weak.subject.id) : null) || unread[0];
+  const hasErrors = Object.values(state.questions).some(row => row.last === false);
+  const nextSpeech = nextLesson
+    ? `ขั้นตอนต่อไปคืออ่านบท${nextLesson.title.th}${weak && nextLesson.subject === weak.subject.id ? ` เพราะวิชา${weak.subject.th}ยังเป็นจุดอ่อน` : ""}`
+    : hasErrors
+      ? "อ่านครบทุกบทแล้ว ขั้นตอนต่อไปคือฝึกข้อที่เคยพลาด"
+      : "อ่านครบทุกบทแล้ว ขั้นตอนต่อไปคือลองสอบจำลองเต็มชุด";
+  const nextStep = nextLesson
+    ? `<section class="next-step"><h2>${t("ขั้นตอนต่อไป", "Your next step")}</h2><p>${weak && nextLesson.subject === weak.subject.id ? t(`อ่านบทต่อไปของวิชาที่ยังอ่อนที่สุด (${esc(weak.subject[lang])})`, `Read the next chapter of your weakest subject (${esc(weak.subject[lang])})`) : t("อ่านบทต่อไปที่ยังไม่ได้อ่าน", "Read the next unread chapter")}</p><div class="next-step-actions"><a class="act solid" href="#lesson/${nextLesson.id}">${esc(nextLesson.title[lang])}</a>${listenButton("progress-next", nextSpeech, t("ฟัง", "Listen"))}</div></section>`
+    : `<section class="next-step"><h2>${t("ขั้นตอนต่อไป", "Your next step")}</h2><p>${hasErrors ? t("อ่านครบทุกบทแล้ว — ฝึกข้อที่เคยพลาดเพื่อปิดจุดอ่อน", "All chapters read — practise the questions you missed to close the gaps.") : t("อ่านครบทุกบทแล้ว — ลองสอบจำลองเต็มชุด", "All chapters read — try a full timed mock.")}</p><div class="next-step-actions"><a class="act solid" href="${hasErrors ? "#practice/errors" : "#mock"}">${hasErrors ? t("ฝึกข้อที่พลาด", "Practise mistakes") : t("สอบจำลองเต็มชุด", "Full timed mock")}</a>${listenButton("progress-next", nextSpeech, t("ฟัง", "Listen"))}</div></section>`;
+  const missing = perSubject.filter(row => row.read < row.chapters.length);
   return `${heading(t("ความคืบหน้า", "Your progress"), t("ดูวิชาที่ทำได้ดีและเลือกจุดที่ควรฝึกต่อ", "See where you’re gaining ground and choose what to practise next."))}
+    ${nextStep}
     <section class="section">${kpis([[n(attempts), t("คำตอบทั้งหมด", "Answers")], [attempts ? `${n(Math.round(hits * 100 / attempts))}%` : "—", t("ตอบถูก", "Accuracy")], [n(dateStreak(state.days)), t("วันต่อเนื่อง", "Day streak")]])}</section>
-    <section class="section"><div class="section-head"><h2>${t("แยกรายวิชา", "By subject")}</h2></div>
-    ${SUBJECTS.map(subject => {
-      const stats = subjectStats(state.questions, subject.id);
+    <section class="section"><div class="section-head"><h2>${t("ความเข้าใจรายวิชา", "Mastery by subject")}</h2></div>
+    ${perSubject.map(({ subject, stats, chapters, read, mastery }) => {
       const count = catalog.subjects[subject.id].questions;
-      return `<div class="statline"><div class="section-head"><a class="link" href="#practice/${subject.id}">${esc(subject[lang])}</a><span class="subtle">${stats.attempts ? `${n(stats.accuracy)}% · ${n(stats.unique)} / ${n(count)}` : t("ยังไม่เริ่ม", "Ready to start")}</span></div><progress max="100" value="${stats.accuracy}" aria-label="${esc(subject[lang])}"></progress></div>`;
+      return `<div class="statline"><div class="section-head"><a class="link" href="#practice/${subject.id}">${esc(subject[lang])}</a><span class="subtle">${n(mastery)}% ${t("เข้าใจ", "mastery")}</span></div><progress max="100" value="${mastery}" aria-label="${esc(subject[lang])}"></progress><p class="stat-sub">${stats.attempts ? `${t("ตอบถูก", "Accuracy")} ${n(stats.accuracy)}% · ${n(stats.unique)} / ${n(count)} ${t("ข้อ", "questions")}` : t("ยังไม่เริ่มฝึก", "No practice yet")} · ${n(read)} / ${n(chapters.length)} ${t("บทที่อ่านแล้ว", "chapters read")}</p></div>`;
     }).join("")}
     </section>
+    ${missing.length ? `<section class="section"><div class="section-head"><h2>${t("ยังเหลืออะไร", "What's left")}</h2></div><div class="list">${missing.map(({ subject, chapters, read }) => row({ href: `#library/${subject.id}`, glyph: subject.icon, label: esc(subject[lang]), note: t(`ยังไม่ได้อ่าน ${n(chapters.length - read)} บท`, `${n(chapters.length - read)} chapters left to read`), data: `${n(read)} / ${n(chapters.length)}`, color: SUBJ_COLORS[subject.id] })).join("")}</div></section>` : `<section class="section"><p class="lead">${t("อ่านครบทุกบทแล้ว — เก่งมาก!", "Every chapter read — well done!")}</p></section>`}
     <section class="section"><div class="section-head"><h2>${t("ผลสอบจำลอง", "Mock history")}</h2></div>${state.mockResults.length ? `<div class="list">${state.mockResults.map(mock => `<div class="row"><span class="row-main">${esc(mock.date)}</span><span class="row-data">${n(mock.correct)} / ${n(mock.total)} · ${mock.pass ? t("ถึงเกณฑ์ฝึก", "Reached practice threshold") : t("ยังไม่ถึงเกณฑ์", "Below practice threshold")}</span></div>`).join("")}</div>` : `<p class="lead">${t("เมื่อสอบจำลองเสร็จ ผลจะปรากฏที่นี่", "Your completed mocks will appear here.")}</p>`}</section>
     <section class="section"><div class="section-head"><h2>${t("การเล่น", "Game history")}</h2></div>${Object.entries(GAMES).map(([id, game]) => {
       const modes = state.gameResults[id] || {};

@@ -1,6 +1,6 @@
 'use strict';
 /* Fern service worker — app shell offline. Generado por gen-sw.js; no editar a mano. */
-const CACHE = 'fern-v5.2';
+const CACHE = 'fern-v6.0';
 const SHELL = [
   './',
   'index.html',
@@ -87,6 +87,7 @@ const SHELL = [
   'assets/webp/streak@2x.webp',
   'assets/webp/welcome.webp',
   'assets/webp/welcome@2x.webp',
+  'audio.js',
   'catalogo.html',
   'data.js',
   'fern-academia/app.css',
@@ -108,6 +109,9 @@ const SHELL = [
   'fern-academia/index.html',
   'fern-academia/interview.mjs',
   'fern-academia/launcher.js',
+  'fern-academia/teach-content.js',
+  'fern-academia/teach.css',
+  'fern-academia/teach.js',
   'fern-academia/views.mjs',
   'fern-ui.js',
   'fern.css',
@@ -116,6 +120,11 @@ const SHELL = [
   'preview/catalog.js',
   'preview/preview.css',
   'preview/preview.js',
+  'teach-content.js',
+  'teach.css',
+  'teach.js',
+  'tour.css',
+  'tour.js',
   'web/mascot-states.json',
   'web/mascot.css'
 ];

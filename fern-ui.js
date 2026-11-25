@@ -86,7 +86,41 @@ Object.assign(I18N.th, {
   loginSendLink: 'ส่งลิงก์เข้าสู่ระบบ',
   loginSkip: 'ดำเนินการต่อโดยไม่ต้องเข้าสู่ระบบ',
   loginNote: 'เข้าสู่ระบบเพื่อสำรองความก้าวหน้า — เปลี่ยนมือถือเมื่อไหร่ก็เรียนต่อได้เลย',
-  loginWait: 'กำลังเข้าสู่ระบบ…'
+  loginWait: 'กำลังเข้าสู่ระบบ…',
+  // v6.0 — capa docente
+  whyTitle: 'ทำไม?',
+  listenBtn: 'ฟัง',
+  listenAgain: 'ฟังอีกครั้ง',
+  teachSimple: 'พูดง่าย ๆ',
+  teachWhy: 'ทำไมถึงเป็นแบบนี้',
+  teachHook: 'จำแบบนี้',
+  miniCheck: 'เช็กเร็ว ๆ',
+  miniCheckSub: 'ตอบ 1–2 ข้อก่อนจบบทเรียน — ตอบผิดก็ไม่เป็นไรนะ เป็นการทบทวน',
+  miniCheckDone: 'จบบทเรียนแล้ว! เก่งมาก',
+  storiesTitle: 'นิทานจำแม่น',
+  storiesSub: 'เรื่องสั้นที่ช่วยให้จำแนวข้อสอบได้ — แตะเพื่อฟังทั้งเรื่อง',
+  storiesRead: 'อ่านแล้ว',
+  storyListenAll: 'ฟังทั้งเรื่อง',
+  storyQuestion: 'คำถามจากเรื่อง',
+  listenTitle: 'ฟังแล้วตอบ',
+  listenSub: 'ฟังเสียงก่อน แล้วเลือกคำตอบที่ถูก',
+  listenPlay: 'ฟังโจทย์',
+  listenShow: 'ดูข้อความ',
+  listenHide: 'ซ่อนข้อความ',
+  progressTitle: 'เราไปถึงไหนแล้ว',
+  progressNext: 'ขั้นต่อไป',
+  progressLeft: 'ยังเหลือ',
+  progressMastery: 'ความแม่นแต่ละวิชา',
+  noQuizYet: 'ยังไม่เคยฝึก',
+  startHere: 'เริ่มตรงนี้',
+  startHereDone: 'เรียนครบทุกบทแล้ว — ทบทวนข้อที่ผิดหรือลองสอบจำลองกัน!',
+  soundRow: 'เสียง',
+  soundSub: 'เสียงอ่านออกเสียงและเสียงประกอบ',
+  soundSec: 'เสียงและคำแนะนำ',
+  repeatIntro: 'ดูการแนะนำอีกครั้ง',
+  repeatIntroSub: 'ทัวร์สั้น ๆ ว่าแอปนี้ใช้อย่างไร',
+  reviewRight: 'ข้อที่ตอบถูก — ดูว่าทำไมถูก',
+  backToList: 'กลับไปรายการนิทาน'
 });
 Object.assign(I18N.en, {
   continuePath: 'Start lesson',
@@ -174,7 +208,41 @@ Object.assign(I18N.en, {
   loginSendLink: 'Send sign-in link',
   loginSkip: 'Continue without an account',
   loginNote: 'Sign in to back up your progress — switch phones anytime and pick up where you left off',
-  loginWait: 'Signing in…'
+  loginWait: 'Signing in…',
+  // v6.0 — teaching layer
+  whyTitle: 'Why?',
+  listenBtn: 'Listen',
+  listenAgain: 'Hear again',
+  teachSimple: 'In simple words',
+  teachWhy: 'Why it works this way',
+  teachHook: 'Remember it like this',
+  miniCheck: 'Quick check',
+  miniCheckSub: 'Answer 1–2 questions to finish the lesson — wrong answers are fine, this is revision',
+  miniCheckDone: 'Lesson complete! Well done',
+  storiesTitle: 'Memory stories',
+  storiesSub: 'Short stories that make exam ideas stick — tap to hear the whole story',
+  storiesRead: 'Read',
+  storyListenAll: 'Listen to the whole story',
+  storyQuestion: 'Question about the story',
+  listenTitle: 'Listen & answer',
+  listenSub: 'Listen first, then pick the right answer',
+  listenPlay: 'Hear the question',
+  listenShow: 'Show the text',
+  listenHide: 'Hide the text',
+  progressTitle: 'How are we doing?',
+  progressNext: 'Next step',
+  progressLeft: 'Still to go',
+  progressMastery: 'Mastery by subject',
+  noQuizYet: 'No practice yet',
+  startHere: 'Start here',
+  startHereDone: 'All lessons done — review your mistakes or try a mock exam!',
+  soundRow: 'Sound',
+  soundSub: 'Read-aloud voice & sound effects',
+  soundSec: 'Sound & guide',
+  repeatIntro: 'Repeat the introduction',
+  repeatIntroSub: 'A short tour of how the app works',
+  reviewRight: 'Correct answers — see why',
+  backToList: 'Back to stories'
 });
 
 function fernAsset(relative) {
@@ -223,7 +291,24 @@ function applyLang() {
   renderAll();
 }
 
+/* v6.0: parar el TTS al cambiar de vista; sonidos y tarjeta «¿Por qué?»
+   con guarda (si teach.js/audio.js no cargaron, nada se rompe). */
+function stopTeachAudio() {
+  try { if (window.FernAudio && FernAudio.stop) FernAudio.stop(); } catch (e) {}
+}
+function playTeachSound(name) {
+  try {
+    if (window.FernTeach && FernTeach.play) FernTeach.play(name);
+    else if (window.FernAudio && FernAudio.play) FernAudio.play(name);
+  } catch (e) {}
+}
+function whyCardHtml(e) {
+  if (window.FernTeach && FernTeach.whyHtml) return FernTeach.whyHtml(e);
+  return `<p>${esc(e)}</p>`;
+}
+
 function go(name) {
+  stopTeachAudio();
   for (const view of document.querySelectorAll('.view')) {
     view.classList.toggle('on', view.id === 'v-' + name);
   }
@@ -317,6 +402,11 @@ function renderPath() {
   lessonList.innerHTML = progressStrip + units.map(unit => unitSummary(
     unit, learnOpen.has(unit.subject.id), unit.lessons.map(lesson => lessonRow(unit.subject, lesson, false)).join('')
   )).join('');
+  // v6.0: entrada a Historias al final de Learn.
+  if (window.FernTeach && FernTeach.storiesEntryHtml) {
+    lessonList.insertAdjacentHTML('beforeend', FernTeach.storiesEntryHtml());
+    FernTeach.wireStoriesEntry(lessonList);
+  }
   document.getElementById('quiz-list').innerHTML = units.map(({ subject }) => {
     const best = LS.get('quiz-' + subject.id, null);
     const total = QUESTIONS[subject.id].length;
@@ -324,6 +414,12 @@ function renderPath() {
     return `<button type="button" class="subject-row" data-practice="${subject.id}" style="--subj:${subjColor(subject.id)}">
       <span class="subj-ic" aria-hidden="true">${subject.icon || ''}</span><b>${esc(subjectTitle(subject))}</b><span class="mut">${total} ${t('qs')}</span>${score}</button>`;
   }).join('');
+  // v6.0: entrada a «Escuchar y responder» al final de Practice.
+  if (window.FernTeach && FernTeach.listenEntryHtml) {
+    const quizList = document.getElementById('quiz-list');
+    quizList.insertAdjacentHTML('beforeend', FernTeach.listenEntryHtml());
+    FernTeach.wireListenEntry(quizList);
+  }
 
   for (const button of document.querySelectorAll('[data-lesson]')) {
     button.onclick = () => {
@@ -365,6 +461,9 @@ function renderPath() {
   const resume = document.getElementById('resume-lesson');
   resume.textContent = t(next ? (G.lessons.length ? 'resumePath' : 'continuePath') : 'courseComplete');
   resume.onclick = next ? () => openLesson(next.subject.id, next.index) : () => go('learn');
+
+  // v6.0: tira «Empieza aquí» + acceso a «Cómo vamos» en Home.
+  if (window.FernTeach && FernTeach.renderStartHere) FernTeach.renderStartHere();
 }
 
 function openLesson(id, index) {
@@ -374,6 +473,8 @@ function openLesson(id, index) {
   const alreadyDone = G.lessons.includes(key);
   const root = document.getElementById('modal-root');
   const compact = LANG === 'en' ? SIMPLE_SUM[id].en : SIMPLE_SUM[id].th;
+  // v6.0: capa docente («En simple» + «¿Por qué?» + gancho) encima del contenido.
+  const teachHtml = (window.FernTeach && FernTeach.teachBlockHtml) ? FernTeach.teachBlockHtml(id, index) : '';
   root.innerHTML = `<dialog class="modal reader-modal" aria-labelledby="lesson-title">
     <article class="reader">
       <header class="reader-head">
@@ -381,6 +482,7 @@ function openLesson(id, index) {
         <span>${t('lessonLabel')} ${index + 1} / ${parts.length}</span>
       </header>
       <div class="reader-title"><h1 id="lesson-title" tabindex="-1">${esc(subjectTitle(subject))}</h1>${mascotArt(93, 'practice')}</div>
+      ${teachHtml}
       <div class="lesson-body">${parts[index] || parts[0]}
         <details class="plain-details">
           <summary>${LANG === 'en' ? 'In brief' : 'สรุปแบบสั้น'}</summary>
@@ -394,11 +496,17 @@ function openLesson(id, index) {
     </article>
   </dialog>`;
   const dialog = root.querySelector('dialog');
-  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  dialog.addEventListener('close', () => { stopTeachAudio(); dialog.remove(); }, { once: true });
   dialog.showModal();
   dialog.querySelector('h1').focus({ preventScroll: true });
-  document.getElementById('m-x').onclick = () => dialog.close();
+  document.getElementById('m-x').onclick = () => { stopTeachAudio(); dialog.close(); };
   document.getElementById('m-done').onclick = () => {
+    if (alreadyDone) { dialog.close(); return; }
+    // v6.0: mini-check de 1-2 preguntas antes de marcar la lección (+15 XP al terminar).
+    if (window.FernTeach && FernTeach.startMiniCheck) {
+      FernTeach.startMiniCheck(dialog, id, index, key);
+      return;
+    }
     if (!G.lessons.includes(key)) {
       G.lessons.push(key);
       addXP(15);
@@ -408,6 +516,7 @@ function openLesson(id, index) {
     checkBadges(true);
   };
   document.getElementById('m-quiz').onclick = () => {
+    stopTeachAudio();
     dialog.close();
     startQuiz(id);
   };
@@ -474,6 +583,7 @@ function renderQ() {
       renderHUD();
       addMistake(sid, idx);
     }
+    playTeachSound(right ? 'correct' : 'wrong');
     const details = q.o.map((option, index) => {
       const description = index === q.a ? q.e : LANG === 'en'
         ? `Review the explanation for answer ${'ABCD'[q.a]}.`
@@ -483,12 +593,12 @@ function renderQ() {
     const fb = box.querySelector('#fb');
     fb.innerHTML = `<div class="feedback feedback-line ${right ? 'ok' : 'no'}" tabindex="-1">
       ${mascotArt(68, right ? 'correct' : 'sad')}
-      <div><strong>${t(right ? 'correct' : 'wrong')}${right ? '' : ` ${'ABCD'[q.a]}. ${esc(q.o[q.a])}`}</strong>
-      <p>${esc(q.e)}</p></div>
-      </div><details class="plain-details option-details"><summary>${t('allOptions')}</summary><ul>${details}</ul></details>
+      <div><strong>${t(right ? 'correct' : 'wrong')}${right ? '' : ` ${'ABCD'[q.a]}. ${esc(q.o[q.a])}`}</strong></div>
+      </div>${whyCardHtml(q.e)}<details class="plain-details option-details"><summary>${t('allOptions')}</summary><ul>${details}</ul></details>
       <button type="button" class="btn" id="nxt">${t(attempt.i + 1 >= attempt.list.length ? 'finish' : 'next')}</button>`;
     fb.querySelector('.feedback').focus();
     fb.querySelector('#nxt').onclick = () => {
+      stopTeachAudio();
       attempt.i += 1;
       renderQ();
     };
@@ -805,7 +915,13 @@ function renderProfile() {
     { ic: '🎯', v: hist.length ? `${hist.length} · ${bestMock}/150` : '0', l: t('statMocks') },
     { ic: '🏅', v: `${badgesOn}/${BADGES.length}`, l: t('statBadges') },
   ];
-  const progressRows = SUBJECTS.map(subject => {
+  // v6.0: fila «Cómo vamos» al inicio de Mi progreso + sección de sonido/guía.
+  const progressRow = (window.FernTeach && FernTeach.openProgress)
+    ? `<button type="button" class="menu-row" id="progress-row">
+      <span class="menu-ic" aria-hidden="true">📊</span>
+      <span class="menu-txt"><strong>${t('progressTitle')}</strong><small>${G.lessons.length}/${totalLessons} ${t('statLessons')} · ${G.xp} XP · 🔥 ${G.streak.n}</small></span>
+      <span class="menu-chev" aria-hidden="true">›</span></button>` : '';
+  const progressRows = progressRow + SUBJECTS.map(subject => {
     const parts = lessonParts(subject.id);
     const done = parts.filter((_, i) => G.lessons.includes(lessonKey(subject.id, i))).length;
     const best = LS.get('quiz-' + subject.id, null);
@@ -815,6 +931,11 @@ function renderProfile() {
       <span class="menu-txt"><strong>${esc(subjectTitle(subject))}</strong><small>${sub}</small></span>
       <span class="menu-chev" aria-hidden="true">›</span></button>`;
   }).join('');
+  const soundRow = (window.FernTeach && FernTeach.soundRowHtml) ? FernTeach.soundRowHtml() : '';
+  const introRow = (window.FernTeach && FernTeach.introRowHtml) ? FernTeach.introRowHtml() : '';
+  const teachSec = (soundRow || introRow) ? `
+    <div class="sec-head"><h2>${t('soundSec')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
+    <div class="menu-group">${soundRow}${introRow}</div>` : '';
   const showInstall = !!deferredInstall;
   const showIOSHint = !isStandalone() && isIOS() && !LS.get('install-hint-off', false);
   const appSec = (showInstall || showIOSHint) ? `
@@ -846,10 +967,13 @@ function renderProfile() {
     ${accountSection()}
     <div id="exam-date-box"></div>
     <div class="sec-head"><h2>${t('myProgress')}</h2><span class="sec-rule" aria-hidden="true"></span></div>
-    <div class="menu-group">${progressRows}</div>${appSec}`;
+    <div class="menu-group">${progressRows}</div>${teachSec}${appSec}`;
   document.getElementById('edit-name').onclick = openEditName;
   document.getElementById('avatar-pick').onclick = openAvatarPick;
   wireAccount();
+  const pvRow = document.getElementById('progress-row');
+  if (pvRow) pvRow.onclick = () => { if (window.FernTeach) FernTeach.openProgress(); };
+  if (window.FernTeach) { FernTeach.wireSoundRow(); FernTeach.wireIntroRow(); }
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.onclick = async () => {
     if (!deferredInstall) return;
@@ -1075,6 +1199,7 @@ bootFern();
 function exitFernMock() {
   const warning = LANG === 'en' ? 'Leave this mock exam? Your current answers will be discarded.' : 'ออกจากการสอบจำลองหรือไม่ คำตอบครั้งนี้จะไม่ถูกบันทึก';
   if (!mock || !window.confirm(warning)) return;
+  stopTeachAudio();
   clearInterval(mockTimer);
   mock = null;
   document.body.classList.remove('quiz-on');

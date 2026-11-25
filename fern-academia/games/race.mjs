@@ -1,5 +1,6 @@
 import { BOOST_COST, CIRCUITS, createRace, position, raceResult, resolvePit, stepRace } from './race-model.mjs';
 import { createScene, drawMap, drawRace } from './race-art.mjs';
+import { noteLocalChange } from '../../firebase-sync.mjs';
 
 const COPY = {
   en: {
@@ -73,6 +74,9 @@ function saveTime(circuit, mode, duration) {
   } catch {
     return false;
   }
+  // La clave entra en el snapshot main (prefijo fern-): avisar al sync para
+  // que la subida se programe. El sync jamás rompe el juego.
+  try { noteLocalChange('main'); } catch { /* sin sync no pasa nada */ }
   return true;
 }
 

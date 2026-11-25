@@ -1,0 +1,205 @@
+/* ===== Fern v6.0 — contenido docente (Fase 2+3) =====
+   Capa "enseñar como a un niño de 5 años" + historias + escucha.
+   El tailandés manda (idioma real del examen); EN es un resumen breve.
+   Claves de lección: sid-part, igual que lessonKey(sid, pi) en app.js.
+   NO toca data.js: todo el contenido nuevo vive aquí. */
+
+var TEACH = {
+'general-0': {
+  simple: { th: 'อนุกรมคือตัวเลขที่เดินตามกฎซ่อนอยู่ — หาให้เจอว่าตัวเลขขยับทีละเท่าไร แล้วตัวต่อไปก็เดาได้เลย',
+    en: 'A number series follows a hidden rule — find how much each number moves, and the next one is easy to guess.' },
+  why: { th: ['ตัวเลขทุกตัวเกิดจากตัวก่อนหน้าด้วยกฎเดิม', 'ถ้าผลต่างเท่าเดิมตลอด แปลว่าบวกหรือคูณด้วยเลขเดิมทุกครั้ง', 'ถ้าผลต่างค่อย ๆ โต แปลว่ากฎซ่อนอยู่อีกชั้น — ให้ดูผลต่างของผลต่าง', 'พอรู้กฎแล้ว ตัวถัดไปก็แค่ทำตามกฎอีกครั้งเดียว'],
+    en: ['Every number comes from the one before it, using the same rule.', 'If the gaps stay equal, the rule adds or multiplies by the same number. If the gaps grow, look at the gaps of the gaps.'] },
+  hook: { th: 'นึกถึงบันได: ถ้าทุกขั้นสูงเท่ากัน ก้าวต่อไปก็สูงเท่ากัน — อนุกรมก็คือบันไดตัวเลข',
+    en: 'Think of stairs: if every step is the same height, the next step is too. A series is a staircase of numbers.' } },
+'general-1': {
+  simple: { th: 'อุปมาคือเกมจับคู่ความสัมพันธ์ — คู่แรกสัมพันธ์กันแบบไหน คู่ที่สองก็ต้องสัมพันธ์แบบเดียวกัน',
+    en: 'An analogy is a relationship-matching game: however the first pair is related, the second pair must relate the same way.' },
+  why: { th: ['ทุกอุปมามี "ความสัมพันธ์" ซ่อนอยู่ เช่น อาชีพกับสถานที่ทำงาน', 'พอเขียนความสัมพันธ์ของคู่แรกเป็นประโยคได้ คำตอบก็ชัดขึ้นทันที', 'ตัวเลือกที่สัมพันธ์คนละแบบจึงผิด แม้คำจะดูเกี่ยวกัน', 'สูตรทองก็เหมือนกัน — เป็นกฎสั้น ๆ ที่ใช้ซ้ำได้ทุกข้อ เช่น ร้อยละคิดจากส่วนหารทั้งหมด'],
+    en: ['Every analogy hides one relationship, like job and workplace.', 'Say the first pair as a sentence, then reuse that sentence for the second pair.'] },
+  hook: { th: 'จำว่า "หมออยู่โรงพยาบาล ครูอยู่โรงเรียน" — ถามตัวเองเสมอว่า "อันแรกอยู่กับอะไร"',
+    en: 'Remember "doctor : hospital = teacher : school" — always ask: what goes with the first one?' } },
+'thai-0': {
+  simple: { th: 'ใจความสำคัญคือ "เรื่องนี้อยากบอกอะไร" ในประโยคเดียว — ที่เหลือแค่รายละเอียดช่วยเล่า',
+    en: 'The main idea is "what is this text trying to say?" in one sentence — the rest is just supporting detail.' },
+  why: { th: ['ทุกย่อหน้ามีประโยคหลักหนึ่งประโยค ที่เหลือขยายความ', 'ประโยคหลักมักอยู่ต้นหรือท้ายย่อหน้า เพราะคนเขียนอยากให้จำ', 'ตัวเลือกที่กว้างเกินไปจะพูดเรื่องอื่นเกินมา ส่วนแคบเกินไปจะพูดแค่ตัวอย่าง', 'ถ้าตัดประโยคไหนออกแล้วเรื่องยังเข้าใจ ประโยคนั้นไม่ใช่ใจความสำคัญ'],
+    en: ['Every paragraph has one main sentence; the rest supports it.', 'It usually sits at the start or the end of the paragraph. Options that are too broad or too narrow are usually wrong.'] },
+  hook: { th: 'นึกถึงแม่ส่งข้อความยาว ๆ — ใจความสำคัญคือ "กลับบ้านกินข้าว" ที่เหลือแค่เล่าว่าทำกับข้าวอะไร',
+    en: 'Think of a long message from mum — the main idea is "come home for dinner"; the rest is just what she cooked.' } },
+'thai-1': {
+  simple: { th: 'สำนวนคือคำพูดสั้น ๆ ที่ความหมายซ่อนอยู่ข้างใน — อย่าอ่านตามตัวอักษร ให้จำภาพของมัน',
+    en: 'An idiom is a short saying with a hidden meaning — never read it literally; remember the picture behind it.' },
+  why: { th: ['สำนวนเกิดจากภาพจำในชีวิตประจำวัน เช่น น้ำขึ้นก็ต้องรีบตัก', 'ความหมายจริงจึงอยู่ที่ "สถานการณ์" ไม่ใช่คำแต่ละคำ', 'พอเจอสำนวนในข้อสอบ ให้ถามว่า "สถานการณ์แบบนี้ คนจะทำอะไร"', 'ภาษาราชการกลับกัน — ต้องตรงตัว สุภาพ ไม่มีคำสแลง'],
+    en: ['Idioms come from everyday scenes, like water rising in a canal.', 'So the meaning lives in the situation, not in each word. Ask: what would a person do in this situation?'] },
+  hook: { th: '"น้ำขึ้นให้รีบตัก" จำภาพน้ำไหลมา — ถ้าไม่รีบตัก น้ำก็ไหลไปหมด โอกาสก็เหมือนกัน',
+    en: '"When the water rises, scoop quickly" — picture the water flowing past. If you wait, it is gone. So is an opportunity.' } },
+'it-0': {
+  simple: { th: 'คอมพิวเตอร์มี 3 ส่วนหลัก: CPU คิด, RAM จำชั่วคราว, ดิสก์เก็บถาวร — แค่นี้ก็เข้าใจเกือบทุกข้อแล้ว',
+    en: 'A computer has 3 main parts: the CPU thinks, RAM remembers for a short while, the disk keeps things forever. That covers almost every question.' },
+  why: { th: ['CPU ทำงานเหมือนสมอง — คำนวณและตัดสินใจ', 'RAM เหมือนโต๊ะทำงาน — วางของที่ใช้ตอนนี้ ปิดเครื่องของก็หาย', 'SSD กับ HDD เหมือนตู้เก็บของ — เก็บไว้ได้นานแม้ปิดเครื่อง', 'หน่วยวัดโตทีละ 1024 เพราะคอมพิวเตอร์นับแบบเลขฐานสอง'],
+    en: ['The CPU is the brain — it calculates and decides.', 'RAM is a work desk: what is on it now disappears when the power goes off. The disk is a cabinet that keeps things.'] },
+  hook: { th: 'จำ "สมอง-โต๊ะ-ตู้": CPU สมอง, RAM โต๊ะ, ดิสก์ตู้ — ถามอะไรก็ตอบด้วยสามคำนี้ได้',
+    en: 'Remember "brain–desk–cabinet": CPU is the brain, RAM the desk, disk the cabinet.' } },
+'it-1': {
+  simple: { th: 'ปุ่มลัดคือทางลัดของมือ — กด 2 ปุ่มแทนคลิกหลายครั้ง ส่วนสูตร Excel ทุกสูตรเริ่มด้วยเครื่องหมาย =',
+    en: 'Shortcuts are hand short-cuts: two keys instead of many clicks. And every Excel formula starts with =.' },
+  why: { th: ['Ctrl+C คัดลอกเพราะ C มาจาก Copy — ตัวอักษรย่อมาจากคำภาษาอังกฤษ', 'Excel รู้ว่าเป็นสูตรเพราะเครื่องหมาย = อยู่หน้าสุด', 'SUM บวก AVERAGE หาค่าเฉลี่ย — ชื่อฟังก์ชันบอกหน้าที่ตรงตัว', 'LAN ใกล้ WAN ไกล — อินเทอร์เน็ตคือ WAN ที่ใหญ่ที่สุดเพราะเชื่อมกันทั่วโลก'],
+    en: ['Ctrl+C copies because C stands for Copy — the letter comes from the English word.', 'Excel knows it is a formula because = comes first. LAN is near, WAN is far; the Internet is the biggest WAN.'] },
+  hook: { th: '"S เก็บ C คัด V วาง Z ย้อน" — ท่องเป็นเพลง: เซฟ-คัด-วาง-ย้อน',
+    en: 'Chant it like a song: "S saves, C copies, V pastes, Z undoes."' } },
+'it-2': {
+  simple: { th: 'ฟิชชิงคือกับดักปลอมที่หน้าตาเหมือนของจริง — ถ้าลิงก์ดูแปลก อย่ากด อย่ากรอกข้อมูล',
+    en: 'Phishing is a fake trap that looks real — if a link looks strange, do not click it and never type your password there.' },
+  why: { th: ['คนร้ายปลอมเว็บหรืออีเมลให้เหมือนของจริง เพราะอยากได้รหัสผ่านของเรา', 'พอเรากรอกข้อมูลลงเว็บปลอม ข้อมูลก็ไปถึงคนร้ายทันที', 'รหัสผ่านยาวและไม่ซ้ำจึงสำคัญ — ถ้าหลุดบัญชีเดียว บัญชีอื่นก็ยังปลอดภัย', '2FA คือกุญแจชั้นที่สอง — แม้รู้รหัสก็เข้าไม่ได้ถ้าไม่มีมือถือเรา'],
+    en: ['Criminals fake a real-looking site or email because they want your password.', 'A long, unique password plus 2FA means one leak cannot open all your accounts.'] },
+  hook: { th: 'นึกถึงคนแปลกหน้าใส่ชุดตำรวจปลอม — ดูเหมือนจริง แต่บัตรไม่ตรง ถามก่อนเชื่อทุกครั้ง',
+    en: 'Picture a stranger in a fake police uniform — it looks real, but the badge is wrong. Check before you trust.' } },
+'saraban-0': {
+  simple: { th: 'งานสารบรรณคือระบบจัดหนังสือราชการให้เป็นระเบียบ — ใครส่งอะไรถึงใคร ค้นหาได้ทุกฉบับ',
+    en: 'Records work (งานสารบรรณ) is the system that keeps official letters organised — who sent what to whom, findable every time.' },
+  why: { th: ['หน่วยงานรัฐมีหนังสือเข้าออกวันละมาก จึงต้องมีระเบียบเดียวกันทั้งประเทศ', 'ระเบียบสำนักนายกฯ พ.ศ. 2526 คือกฎหลักที่ใช้กัน', 'มีการแก้ไขถึงฉบับที่ 4 พ.ศ. 2564 เพราะงานเปลี่ยนไปตามยุค', 'สำนักงานตำรวจแห่งชาติมีระเบียบของตัวเองด้วย คือ พ.ศ. 2556'],
+    en: ['Government offices handle so many letters that one shared rulebook is needed.', 'The main rulebook is from 1983 (B.E. 2526), amended to No. 4 in 2021 (B.E. 2564).'] },
+  hook: { th: 'จำ "2526 กฎใหญ่ 2564 แก้ครั้งที่ 4" — เลขสองชุดนี้ออกสอบบ่อยที่สุด',
+    en: 'Remember "2526 the big rule, 2564 the 4th amendment" — those two numbers appear on the exam most.' } },
+'saraban-1': {
+  simple: { th: 'หนังสือราชการมี 6 ชนิด — แยกตาม "ส่งถึงใคร" กับ "ใช้ทำอะไร" จำแค่ 6 ชื่อก็ตอบได้ครึ่งข้อแล้ว',
+    en: 'There are 6 types of official letters — split by "sent to whom" and "used for what". Learn the 6 names and half the questions answer themselves.' },
+  why: { th: ['หนังสือภายนอกส่งออกนอกหน่วยงาน จึงต้องใช้กระดาษตราครุฑที่ดูเป็นทางการ', 'หนังสือภายในส่งกันเองในหน่วยงาน ใช้กระดาษบันทึกข้อความก็พอ', 'หนังสือประทับตราใช้ตราแทนลายมือชื่อ เพราะเป็นเรื่องเล็ก ไม่ต้องเซ็น', 'ชั้นความเร็วบอกว่าต้องทำเร็วแค่ไหน ส่วนชั้นความลับบอกว่าใครอ่านได้บ้าง'],
+    en: ['External letters leave the office, so they use formal Garuda paper.', 'Internal letters stay inside, so memo paper is enough. Stamped letters use a stamp instead of a signature for small matters.'] },
+  hook: { th: '"นอกครุฑ ในบันทึก" — หนังสือนอกหน่วยงานใช้ตราครุฑ หนังสือในหน่วยงานใช้บันทึกข้อความ',
+    en: '"Outside Garuda, inside memo" — letters going out use Garuda paper; letters staying in use memo paper.' } },
+'saraban-2': {
+  simple: { th: 'หนังสือราชการเก็บไม่เท่ากัน — ยิ่งสำคัญยิ่งเก็บนาน ของทั่วไป 10 ปี สำเนา 5 ปี เรื่องเล็กเสร็จแล้ว 1 ปี',
+    en: 'Official letters are not kept equally — the more important, the longer: general 10 years, copies 5 years, finished small matters 1 year.' },
+  why: { th: ['หนังสือทั่วไปอาจต้องใช้อ้างอิงภายหลัง จึงเก็บนาน 10 ปี', 'สำเนาคู่ฉบับมีต้นฉบับเก็บไว้แล้ว จึงเก็บสั้นกว่าแค่ 5 ปี', 'เรื่องธรรมดาที่เสร็จแล้วไม่มีอะไรค้าง เก็บแค่ 1 ปีก็พอ', 'ครบ 20 ปีแล้วมีคุณค่าทางประวัติศาสตร์ ต้องส่งหอจดหมายเหตุแห่งชาติ'],
+    en: ['General letters may be needed again later, so they are kept 10 years.', 'Copies already have an original on file, so 5 years is enough. At 20 years, valuable ones go to the National Archives.'] },
+  hook: { th: 'จำเลข "10-5-1-20": ทั่วไป 10 สำเนา 5 เรื่องเล็ก 1 ครบ 20 ส่งหอจดหมายเหตุ',
+    en: 'Remember the numbers "10-5-1-20": general 10, copies 5, small matters 1, at 20 to the National Archives.' } },
+'law-0': {
+  simple: { th: 'กฎหมายมี 2 คู่ใหญ่: มหาชนกับเอกชน และสารบัญญัติกับวิธีสบัญญัติ — ส่วนรัฐธรรมนูญอยู่สูงสุดเหนือกฎหมายทุกฉบับ',
+    en: 'Law has 2 big pairs: public vs private, and substantive vs procedural — and the Constitution stands above every other law.' },
+  why: { th: ['กฎหมายมหาชนคือกฎระหว่างรัฐกับประชาชน ส่วนเอกชนคือกฎระหว่างประชาชนด้วยกัน', 'สารบัญญัติบอกว่า "มีสิทธิอะไร" ส่วนวิธีสบัญญัติบอกว่า "จะใช้สิทธิอย่างไร"', 'รัฐธรรมนูญอยู่สูงสุด เพราะเป็นกติกาพื้นฐานของประเทศ', 'เด็กอายุไม่เกิน 12 ปีจึงไม่รับโทษอาญา — กฎหมายเห็นว่ายังเด็กเกินจะรับผิดชอบเต็มที่'],
+    en: ['Public law is state vs citizen; private law is citizen vs citizen.', 'Substantive law says what rights you have; procedural law says how to use them. The Constitution is supreme because it is the country\'s basic rulebook.'] },
+  hook: { th: 'จำพีระมิด: รัฐธรรมนูญอยู่ยอด — กฎหมายอื่นขัดกับยอดไม่ได้',
+    en: 'Picture a pyramid: the Constitution sits at the top — no lower law may contradict it.' } },
+'law-1': {
+  simple: { th: 'กฎหมายชีวิตประจำวันคือกติกาที่เจอทุกวัน — ขับรถต้องมีใบขับขี่ ซื้อของต้องได้รับการคุ้มครอง ข้อมูลของเราต้องได้รับอนุญาตก่อนใช้',
+    en: 'Everyday law is the rules you meet daily — driving needs a licence, shoppers are protected, and your personal data needs your permission before use.' },
+  why: { th: ['จราจรกำหนดให้มีใบขับขี่และสวมหมวก เพราะอุบัติเหตุเกิดเร็ว ป้องกันก่อนดีกว่าแก้', 'สคบ. คุ้มครองผู้บริโภค เพราะคนซื้อเสียเปรียบคนขายเรื่องข้อมูลสินค้า', 'PDPA กำหนดให้ใช้ข้อมูลส่วนบุคคลต้องได้รับความยินยอม เพราะข้อมูลคือของส่วนตัว', 'พ.ร.บ.คอมพิวเตอร์ฯ ลงโทษการแอบเข้าถึงระบบและข้อมูลเท็จ เพราะทำลายความน่าเชื่อถือ'],
+    en: ['Traffic law demands a licence and a helmet because accidents happen fast — prevention beats cure.', 'The consumer board (สคบ.) protects buyers because sellers know more about the product. PDPA protects your data because it belongs to you.'] },
+  hook: { th: '"ใบขับขี่ สคบ. PDPA" — สามคำนี้คือกฎหมายที่คนทั่วไปเจอบ่อยที่สุด',
+    en: '"Licence, consumer board, PDPA" — those three words are the laws ordinary people meet most.' } },
+'english-0': {
+  simple: { th: 'ไวยากรณ์อังกฤษสอบแค่รูปแบบประโยคสั้น ๆ — จำว่า tense ไหนใช้รูปกริยาแบบไหน แล้วเติมให้ถูกที่',
+    en: 'Exam grammar is just short sentence patterns — remember which verb form each tense uses, and put it in the right place.' },
+  why: { th: ['Present Simple ใช้กับกิจวัตร — He/She/It ต้องเติม s/es เพราะประธานเอกพจน์', 'Past Simple ใช้ V2 เพราะเหตุการณ์จบไปแล้วในอดีต', 'Continuous เติม -ing เพราะกำลังทำอยู่ตอนนั้น ส่วน Future ใช้ will นำหน้า', 'many ใช้กับของนับได้ much ใช้กับของนับไม่ได้ — แยกตามชนิดคำนาม'],
+    en: ['Present Simple is for routines — He/She/It adds -s because the subject is singular.', 'Past Simple uses V2 because the event is finished. Continuous adds -ing for something happening now.'] },
+  hook: { th: '"He/She/It เติม s" — ท่องประโยคนี้ไว้ ข้อสอบ tense ออกทุกครั้ง',
+    en: 'Chant "He/She/It adds -s" — a tense question appears on every exam.' } },
+'english-1': {
+  simple: { th: 'บทสนทนาในข้อสอบคือประโยคบริการสั้น ๆ — ถามสุภาพ ตอบสุภาพ จำแค่ไม่กี่ประโยคก็ตอบได้',
+    en: 'Exam conversation is short service sentences — ask politely, answer politely. A few sentences cover it.' },
+  why: { th: ['"How may I help you?" คือคำถามให้บริการ — ตอบรับด้วย Certainly หรือ Of course', '"Thank you" ต้องตอบ "You are welcome" — เป็นคู่ประโยคที่ไปด้วยกันเสมอ', 'ขอโทษใช้ "I am sorry" ส่วน "Excuse me" ใช้เรียกความสนใจก่อนพูด', 'การอ่านให้อ่านคำถามก่อน แล้วหาคำสำคัญในเรื่อง — คำตอบมักถอดความ ไม่ใช่คำเดิม'],
+    en: ['"How may I help you?" offers help — answer with "Certainly" or "Of course".', '"Thank you" always pairs with "You are welcome". For reading, read the questions first, then hunt for keywords.'] },
+  hook: { th: 'จำคู่ประโยค: Thank you → You are welcome — เหมือน "ขอบคุณครับ → ด้วยความยินดีครับ"',
+    en: 'Remember the pair: Thank you → You are welcome — just like "thank you → you are welcome" in Thai.' } }
+};
+
+/* ===== Historias: 2 por materia, 12 en total ===== */
+var STORIES = [
+{id:'st-general-1', sid:'general', title:{th:'ร้านขนมของคุณยาย', en:'Grandma\'s snack shop'},
+ body:['คุณยายขายขนมชิ้นละ 80 บาท','วันนี้ยายลดราคา 25% เพราะเป็นวันเกิดของหลาน','เฟิร์นคิดในใจว่า 25% ของ 80 คือ 20 บาท','ดังนั้นต้องจ่ายแค่ 80 ลบ 20 เท่ากับ 60 บาท','ยายยิ้มแล้วบอกว่า "คิดเลขเก่งแบบนี้ สอบผ่านแน่"'],
+ q:{th:'ขนมราคา 80 บาท ลด 25% ต้องจ่ายเท่าไร', o:['40 บาท','50 บาท','60 บาท','70 บาท'], a:2,
+    why:{th:'ลด 25% ของ 80 = 20 บาท จ่าย 80 − 20 = 60 บาท', en:'25% of 80 is 20, so you pay 80 − 20 = 60.'}}},
+{id:'st-general-2', sid:'general', title:{th:'บันไดเลขของคุณพ่อ', en:'Dad\'s number stairs'},
+ body:['พ่อพาเฟิร์นนับขั้นบันไดที่บ้าน','ขั้นที่ 1 มี 2 ก้อน ขั้นที่ 2 มี 4 ก้อน ขั้นที่ 3 มี 6 ก้อน','เฟิร์นเห็นว่าทุกขั้นเพิ่มขึ้นทีละ 2 ก้อน','ขั้นที่ 4 จึงต้องมี 8 ก้อน','พ่อบอกว่า "อนุกรมก็แบบนี้แหละ — หาว่าเพิ่มทีละเท่าไร ก็รู้ตัวต่อไป"'],
+ q:{th:'อนุกรม 2, 4, 6, 8 ตัวถัดไปคือข้อใด', o:['9','10','12','16'], a:1,
+    why:{th:'บวก 2 ทุกครั้ง 8 + 2 = 10', en:'Add 2 each time: 8 + 2 = 10.'}}},
+{id:'st-thai-1', sid:'thai', title:{th:'จดหมายยาวของแม่', en:'Mum\'s long letter'},
+ body:['แม่ส่งข้อความยาวมากให้เฟิร์น','เล่าว่าทำแกงเขียวหวาน ซื้อผักที่ตลาด และล้างจานเสร็จแล้ว','เฟิร์นอ่านจนจบแล้วถามตัวเองว่า "แม่ต้องการบอกอะไร"','คำตอบคือประโยคเดียว: กลับบ้านมากินข้าวเย็นด้วยกัน','ที่เหลือทั้งหมดแค่รายละเอียด — ใจความสำคัญมีแค่ประโยคเดียว'],
+ q:{th:'ใจความสำคัญของจดหมายคือข้อใด', o:['แม่ทำแกงเขียวหวาน','แม่ซื้อผักที่ตลาด','แม่ล้างจานเสร็จแล้ว','ให้กลับบ้านมากินข้าวเย็นด้วยกัน'], a:3,
+    why:{th:'ใจความสำคัญคือสิ่งที่ผู้เขียนต้องการบอกเป็นหลัก — อย่างอื่นแค่รายละเอียด', en:'The main idea is the one thing the writer mainly wants to say; the rest is detail.'}}},
+{id:'st-thai-2', sid:'thai', title:{th:'น้ำขึ้นที่บ้านริมคลอง', en:'Rising water by the canal'},
+ body:['บ้านยายอยู่ริมคลอง น้ำขึ้นทุกปีตอนหน้าฝน','ยายบอกว่า "น้ำขึ้นให้รีบตัก" แล้วรีบตักน้ำใส่โอ่ง','เฟิร์นถามว่าทำไมต้องรีบ ยายตอบว่า "น้ำไหลไปแล้วไม่ไหลกลับ"','เฟิร์นจึงเข้าใจว่า สำนวนนี้สอนให้รีบคว้าโอกาส','โอกาสก็เหมือนน้ำ — ถ้าช้าไป โอกาสก็ไหลผ่านไปเลย'],
+ q:{th:'สำนวน "น้ำขึ้นให้รีบตัก" หมายถึงข้อใด', o:['ให้รีบตักน้ำตอนฝนตก','มีโอกาสให้รีบคว้า','น้ำในคลองกำลังขึ้น','ให้เก็บน้ำไว้ใช้หน้าแล้ง'], a:1,
+    why:{th:'สำนวนหมายถึง: เมื่อมีโอกาสเข้ามา ให้รีบคว้าไว้ก่อนที่จะหมดไป', en:'The idiom means: when an opportunity comes, seize it before it passes.'}}},
+{id:'st-it-1', sid:'it', title:{th:'คอมพิวเตอร์เครื่องแรกของน้อง', en:'Little brother\'s first computer'},
+ body:['น้องชายได้คอมพิวเตอร์เครื่องแรก','เฟิร์นสอนว่า CPU คือสมองของเครื่อง','RAM คือโต๊ะทำงาน — วางของตอนใช้ ปิดเครื่องของก็หาย','ส่วนดิสก์คือตู้เก็บของ — เก็บไฟล์ไว้ได้นาน','น้องจำได้ทันทีว่า "ปิดเครื่องแล้วงานหาย เพราะงานอยู่บนโต๊ะ"'],
+ q:{th:'ปิดเครื่องแล้วข้อมูลหาย คือส่วนใด', o:['CPU','RAM','SSD','HDD'], a:1,
+    why:{th:'RAM เป็นหน่วยความจำชั่วคราว ปิดเครื่องข้อมูลหาย ส่วน SSD/HDD เก็บถาวร', en:'RAM is temporary memory: switching off wipes it. SSD/HDD keep data.'}}},
+{id:'st-it-2', sid:'it', title:{th:'อีเมลแปลก ๆ', en:'The strange email'},
+ body:['วันหนึ่งเฟิร์นได้อีเมลบอกว่า "บัญชีของคุณจะถูกล็อก กรุณากรอกรหัสผ่าน"','ลิงก์ในอีเมลดูแปลก ๆ ตัวสะกดก็ผิดหลายที่','เฟิร์นนึกถึงบทเรียนเรื่องฟิชชิง — เว็บปลอมหลอกเอาข้อมูล','เธอไม่กดลิงก์ และไม่กรอกรหัสผ่าน','แล้วรายงานอีเมลนั้นให้เจ้าหน้าที่ทราบ'],
+ q:{th:'อีเมลที่ขอให้กรอกรหัสผ่านผ่านลิงก์แปลก ๆ น่าจะเป็นอะไร', o:['อีเมลจากธนาคารจริง','ฟิชชิง','จดหมายข่าว','อีเมลจากเพื่อน'], a:1,
+    why:{th:'ฟิชชิงคือเว็บหรืออีเมลปลอมที่หลอกให้กรอกข้อมูล — ถ้าลิงก์ดูแปลก อย่ากด', en:'Phishing is a fake site or email that tricks you into typing your data. A strange link means: do not click.'}}},
+{id:'st-saraban-1', sid:'saraban', title:{th:'หนังสือฉบับแรกของเฟิร์น', en:'Fern\'s first official letter'},
+ body:['วันแรกที่ทำงาน เฟิร์นต้องส่งหนังสือไปอีกหน่วยงานหนึ่ง','พี่ที่ทำงานบอกว่า "หนังสือภายนอกต้องใช้กระดาษตราครุฑ"','เฟิร์นถามว่าทำไม พี่ตอบว่า "เพราะส่งออกนอก ต้องดูเป็นทางการ"','ส่วนหนังสือส่งกันเองในหน่วยงาน ใช้กระดาษบันทึกข้อความก็พอ','เฟิร์นจำได้เลยว่า "นอกครุฑ ในบันทึก"'],
+ q:{th:'หนังสือภายนอกใช้กระดาษอะไร', o:['กระดาษบันทึกข้อความ','กระดาษตราครุฑ','กระดาษ A4 ธรรมดา','กระดาษสี'], a:1,
+    why:{th:'หนังสือภายนอกส่งระหว่างส่วนราชการหรือถึงบุคคลภายนอก ใช้กระดาษตราครุฑ', en:'External letters go outside the office, so they use formal Garuda paper.'}}},
+{id:'st-saraban-2', sid:'saraban', title:{th:'ตู้เอกสาร 10 ปี', en:'The 10-year archive cabinet'},
+ body:['เฟิร์นช่วยจัดห้องเก็บเอกสาร','พี่บอกว่า "หนังสือทั่วไปเก็บ 10 ปี สำเนาเก็บ 5 ปี"','เรื่องธรรมดาที่เสร็จแล้วเก็บแค่ 1 ปีก็พอ','ส่วนหนังสือเก่าครบ 20 ปีที่มีคุณค่า ต้องส่งหอจดหมายเหตุแห่งชาติ','เฟิร์นท่องเลขไว้ว่า "10-5-1-20" แล้วจำได้ตลอด'],
+ q:{th:'หนังสือทั่วไปเก็บอย่างน้อยกี่ปี', o:['1 ปี','5 ปี','10 ปี','20 ปี'], a:2,
+    why:{th:'หนังสือทั่วไปเก็บอย่างน้อย 10 ปี สำเนาคู่ฉบับ 5 ปี เรื่องธรรมดาเสร็จแล้ว 1 ปี', en:'General documents: at least 10 years. Duplicate copies: 5. Finished routine matters: 1.'}}},
+{id:'st-law-1', sid:'law', title:{th:'น้องอายุ 11 ขวบ', en:'The 11-year-old'},
+ body:['เด็กชายอายุ 11 ขวบขว้างบอลไปโดนกระจกร้านแตก','เจ้าของร้านโกรธมาก บอกว่าจะแจ้งตำรวจจับเด็ก','ตำรวจอธิบายว่า เด็กอายุยังไม่เกิน 12 ปี ทำผิดไม่ต้องรับโทษอาญา','แต่พ่อแม่ต้องรับผิดชอบค่าเสียหายแทน','เฟิร์นจำได้ว่า กฎหมายปกป้องเด็ก เพราะเด็กยังรับผิดชอบเต็มที่ไม่ได้'],
+ q:{th:'เด็กอายุ 11 ปีทำผิด ต้องรับโทษอาญาหรือไม่', o:['ต้องรับโทษเต็มที่','ไม่ต้องรับโทษอาญา','รับโทษครึ่งหนึ่ง','แล้วแต่ผู้พิพากษา'], a:1,
+    why:{th:'เด็กอายุยังไม่เกิน 12 ปี ทำผิดไม่ต้องรับโทษอาญา', en:'A child aged 12 or under who offends receives no criminal punishment.'}}},
+{id:'st-law-2', sid:'law', title:{th:'หมวกกันน็อกของพี่ชาย', en:'Big brother\'s helmet'},
+ body:['พี่ชายขี่มอเตอร์ไซค์ไปตลาดโดยไม่สวมหมวกกันน็อก','ตำรวจจราจรเรียกให้จอด','พี่ชายบอกว่า "ไปใกล้ ๆ แค่ 5 นาทีเอง"','ตำรวจตอบว่า "อุบัติเหตุไม่เลือกเวลา หมวกช่วยชีวิตได้"','ตั้งแต่วันนั้น พี่ชายไม่เคยลืมหมวกอีกเลย'],
+ q:{th:'ขับมอเตอร์ไซค์ไม่สวมหมวกกันน็อก ผิดกฎหมายหรือไม่', o:['ไม่ผิด ถ้าไปใกล้ ๆ','ผิด เพราะกฎหมายกำหนดให้สวมหมวกนิรภัย','ผิดเฉพาะตอนกลางคืน','ไม่ผิด ถ้าขับช้า'], a:1,
+    why:{th:'กฎหมายจราจรกำหนดให้ผู้ขับขี่และผู้โดยสารมอเตอร์ไซค์สวมหมวกนิรภัย', en:'Traffic law requires motorcycle riders and passengers to wear a helmet.'}}},
+{id:'st-english-1', sid:'english', title:{th:'ลูกค้าคนแรก', en:'The first customer'},
+ body:['เฟิร์นฝึกงานที่เคาน์เตอร์บริการ','ลูกค้าชาวต่างชาติเดินเข้ามา เฟิร์นยิ้มแล้วพูดว่า "How may I help you?"','ลูกค้าตอบว่า "Thank you" เฟิร์นตอบกลับทันทีว่า "You are welcome"','ลูกค้าชมว่าเฟิร์นพูดสุภาพมาก','เฟิร์นดีใจที่ประโยคสั้น ๆ แค่ไม่กี่ประโยคก็ใช้ได้จริง'],
+ q:{th:'"How may I help you?" ใช้ในสถานการณ์ใด', o:['ถามทาง','ให้บริการลูกค้า','บอกลา','ขอโทษ'], a:1,
+    why:{th:'"How may I help you?" แปลว่า "ให้ช่วยอะไรไหมคะ" ใช้เมื่อให้บริการ', en:'"How may I help you?" means "How can I help you?" — used when serving someone.'}}},
+{id:'st-english-2', sid:'english', title:{th:'He plays football', en:'He plays football'},
+ body:['เฟิร์นกำลังทบทวนไวยากรณ์กับเพื่อน','เพื่อนเขียนว่า "He play football every day"','เฟิร์นบอกว่า "ประธาน He ต้องเติม s — He plays football"','เพื่อนถามว่าทำไม เฟิร์นตอบว่า "Present Simple กับ He/She/It กริยาต้องเติม s/es"','ทั้งสองท่องพร้อมกันว่า "He/She/It เติม s"'],
+ q:{th:'ประโยคใดถูกต้อง', o:['He play football every day.','He plays football every day.','He playing football every day.','He played football every day.'], a:1,
+    why:{th:'Present Simple กับประธาน He/She/It กริยาเติม s/es: He plays', en:'Present Simple with He/She/It adds -s to the verb: He plays.'}}}
+];
+
+/* ===== Escucha: 3 ítems por materia, 6 sets =====
+   say = texto que lee el TTS (y que se muestra como apoyo si Fern lo pide) */
+var LISTEN_SETS = {
+general: [
+ {say:'อนุกรม 3, 6, 9, 12 ตัวถัดไปคือเลขอะไร', o:['13','14','15','18'], a:2,
+  why:{th:'บวก 3 ทุกครั้ง 12 + 3 = 15', en:'Add 3 each time: 12 + 3 = 15.'}},
+ {say:'ร้อยละ 50 ของ 200 คือเท่าไร', o:['50','100','150','200'], a:1,
+  why:{th:'200 × 50/100 = 100', en:'200 × 50/100 = 100.'}},
+ {say:'หมอทำงานที่โรงพยาบาล ครูทำงานที่ไหน', o:['นักเรียน','โรงเรียน','หนังสือ','กระดาน'], a:1,
+  why:{th:'ความสัมพันธ์คือ อาชีพ กับ สถานที่ทำงาน', en:'The relationship is job and workplace.'}}],
+thai: [
+ {say:'สำนวน ช้า ๆ ได้พร้าเล่มงาม หมายถึงอะไร', o:['ทำช้าแล้วไม่ได้อะไร','ใจเย็นรอบคอบ งานจึงดี','รีบทำรีบเสร็จ','ช้าแล้วเสียโอกาส'], a:1,
+  why:{th:'สำนวนสอนว่า ใจเย็นและรอบคอบ ทำให้งานออกมาดี', en:'The idiom teaches: slow and careful makes good work.'}},
+ {say:'ใจความสำคัญของย่อหน้ามักอยู่ตรงไหน', o:['กลางย่อหน้า','ประโยคแรกหรือประโยคสุดท้าย','ในตัวอย่าง','ในคำอธิบาย'], a:1,
+  why:{th:'ประโยคหลักมักอยู่ต้นหรือท้ายย่อหน้า เพราะคนเขียนอยากให้จำ', en:'The main sentence usually sits at the start or the end of the paragraph.'}},
+ {say:'ปากว่าตาขยิบ หมายถึงอะไร', o:['พูดอย่างทำอย่าง','พูดเก่งมาก','มองคนอื่นตลอด','ตาไว'], a:0,
+  why:{th:'ปากว่าตาขยิบ คือ พูดอย่างหนึ่ง แต่ทำอีกอย่างหนึ่ง', en:'It means saying one thing and doing another.'}}],
+it: [
+ {say:'ปุ่มลัด Ctrl+S ใช้ทำอะไร', o:['คัดลอก','วาง','บันทึก','ย้อนกลับ'], a:2,
+  why:{th:'Ctrl+S คือ Save — บันทึกงาน', en:'Ctrl+S is Save.'}},
+ {say:'8 bit เท่ากับเท่าไร', o:['1 Byte','1 KB','1 MB','1 GB'], a:0,
+  why:{th:'8 bit = 1 Byte', en:'8 bit = 1 Byte.'}},
+ {say:'สูตร Excel หาผลรวมคืออะไร', o:['AVERAGE','SUM','MAX','IF'], a:1,
+  why:{th:'SUM หาผลรวม AVERAGE หาค่าเฉลี่ย', en:'SUM gives the total; AVERAGE gives the mean.'}}],
+saraban: [
+ {say:'หนังสือราชการมีกี่ชนิด', o:['4 ชนิด','5 ชนิด','6 ชนิด','7 ชนิด'], a:2,
+  why:{th:'6 ชนิด: ภายนอก ภายใน ประทับตรา สั่งการ ประชาสัมพันธ์ หลักฐาน', en:'6 types: external, internal, stamped, directive, PR, evidence.'}},
+ {say:'หนังสือภายในใช้กระดาษอะไร', o:['กระดาษตราครุฑ','กระดาษบันทึกข้อความ','กระดาษ A4','กระดาษสี'], a:1,
+  why:{th:'หนังสือภายในใช้กระดาษบันทึกข้อความ', en:'Internal letters use memorandum paper.'}},
+ {say:'หนังสือทั่วไปเก็บอย่างน้อยกี่ปี', o:['1 ปี','5 ปี','10 ปี','20 ปี'], a:2,
+  why:{th:'หนังสือทั่วไปเก็บอย่างน้อย 10 ปี', en:'General documents are kept at least 10 years.'}}],
+law: [
+ {say:'บรรลุนิติภาวะเมื่ออายุเท่าไร', o:['15 ปี','18 ปี','20 ปี','25 ปี'], a:2,
+  why:{th:'บรรลุนิติภาวะเมื่ออายุ 20 ปีบริบูรณ์', en:'Legal majority is at 20 years completed.'}},
+ {say:'กฎหมายสูงสุดของประเทศคืออะไร', o:['พระราชบัญญัติ','รัฐธรรมนูญ','กฎกระทรวง','ข้อบัญญัติท้องถิ่น'], a:1,
+  why:{th:'รัฐธรรมนูญอยู่สูงสุดเหนือกฎหมายทุกฉบับ', en:'The Constitution stands above every other law.'}},
+ {say:'เด็กอายุไม่เกินกี่ปี ทำผิดไม่ต้องรับโทษอาญา', o:['10 ปี','12 ปี','15 ปี','18 ปี'], a:1,
+  why:{th:'เด็กอายุยังไม่เกิน 12 ปี ทำผิดไม่ต้องรับโทษอาญา', en:'A child aged 12 or under receives no criminal punishment.'}}],
+english: [
+ {say:'ฟังประโยคนี้: He plays football every day. ประโยคนี้ใช้ tense อะไร', o:['Past Simple','Present Simple','Future','Present Continuous'], a:1,
+  why:{th:'He plays — Present Simple ใช้กับกิจวัตร ประธาน He กริยาเติม s', en:'He plays: Present Simple for routines; He adds -s.'}},
+ {say:'How may I help you? หมายถึงอะไร', o:['คุณมาจากไหน','ให้ช่วยอะไรไหม','คุณชื่ออะไร','วันนี้วันอะไร'], a:1,
+  why:{th:'How may I help you? แปลว่า ให้ช่วยอะไรไหมคะ ใช้เมื่อให้บริการ', en:'"How may I help you?" means "How can I help you?"'}},
+ {say:'มีคนพูดว่า Thank you ควรตอบว่าอย่างไร', o:['I am sorry','You are welcome','Excuse me','Good bye'], a:1,
+  why:{th:'Thank you ตอบด้วย You are welcome — เป็นคู่ประโยคที่ไปด้วยกันเสมอ', en:'"Thank you" pairs with "You are welcome".'}}]
+};

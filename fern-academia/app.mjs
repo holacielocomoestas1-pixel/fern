@@ -7,6 +7,7 @@ import {
   mockView, cardsView, gamesView, gamePicker, gameView, progressView, loadingView,
 } from "./views.mjs";
 import { interviewView } from "./interview.mjs";
+import { speakKey, stopSpeaking, listenButton } from "./teach.js";
 import {
   initFirebaseSync, noteLocalChange, onSyncEvent, getSyncInfo, onAcademyCloudApply,
 } from "../firebase-sync.mjs";
@@ -183,6 +184,7 @@ async function render(resetScroll = true) {
   const active = { lesson: "library", mock: "practice", session: "practice", cards: "practice", game: "games", play: "games", interview: "practice" }[page] || page;
   const id = ++viewId;
   current = page;
+  stopSpeaking();
   closeGame();
   drawShell(active);
   if (!catalog) return;
@@ -293,7 +295,7 @@ function answerOptions(item, reveal = false) {
 function feedback(item) {
   const q = item.question;
   const hit = item.selected === q.correct;
-  return `<div class="feedback ${hit ? "" : "miss"}"><strong>${hit ? t("ถูกต้อง", "Correct") : t("วิธีคิด", "How to solve it")}</strong><p>${esc(q.explanation[lang])}</p></div>${sources(ctx(), q.sources)}`;
+  return `<div class="feedback why-card ${hit ? "" : "miss"}"><div class="why-head"><strong>${hit ? t("ถูกต้อง", "Correct") : t("วิธีคิด", "How to solve it")}</strong><span class="why-badge">${t("ทำไม?", "Why?")}</span></div><p class="why-label">${t("ทำไมถึงเป็นแบบนี้", "Why this is the answer")}</p><p>${esc(q.explanation[lang])}</p>${listenButton(`why-${q.id}`, q.explanation.th, t("ฟังคำอธิบาย", "Listen to the explanation"))}</div>${sources(ctx(), q.sources)}`;
 }
 
 function sessionView() {
@@ -306,6 +308,7 @@ function sessionView() {
   const answered = session.items.filter(value => value.selected !== null).length;
   return `<section class="quiz-wrap">
     <div class="quiz-head"><a class="link" href="#practice">${t("สนามฝึก", "Practice")}</a>${mock ? '<span id="clock" class="clock" role="timer"></span>' : ""}<span class="subtle">${n(session.current + 1)} / ${n(session.items.length)}</span></div>
+    ${session.minicheck ? `<p class="minicheck-banner">${t("เช็กสั้น ๆ หลังบทเรียน · ไม่คิดคะแนน แค่ทบทวนให้จำแน่น", "Quick check after the chapter · no score, just a memory lock-in")}</p>` : ""}
     <progress value="${mock ? answered : session.current + Number(item.revealed || false)}" max="${session.items.length}" aria-label="${t("ข้อที่ตอบแล้ว", "Questions answered")}"></progress>
     <div class="quiz-head"><p class="eyebrow">${esc(sub[lang])}</p><button type="button" data-action="save-question" class="icon-button" aria-label="${t("บันทึกข้อนี้", "Bookmark this question")}" aria-pressed="${saved}">${icon("bookmark")}</button></div>
     <h1 id="quiz-prompt" class="question-title" tabindex="-1">${esc(q.prompt[lang])}</h1>
@@ -328,22 +331,22 @@ function resultsView() {
     <section class="section"><div class="section-head"><h2>${t("ผลรายวิชา", "Subject scores")}</h2></div><div class="list">
     ${Object.entries(result.subjects).map(([id, score]) => `<a class="row" href="#practice/${id}"><span class="row-main">${esc(SUBJECTS.find(s => s.id === id)[lang])}</span><span class="row-data">${n(score.correct)} / ${n(score.total)}</span>${icon("next")}</a>`).join("")}
     </div></section>
-    <div class="inline-actions section"><a class="act solid" href="${missed.length ? "#practice/errors" : "#practice"}">${missed.length ? t("ฝึกข้อที่พลาด", "Practise mistakes") : t("ฝึกชุดใหม่", "New practice session")}</a><a class="act ghost" href="#progress">${t("ดูความคืบหน้า", "See progress")}</a></div>
+    <div class="inline-actions section"><a class="act solid" href="${missed.length ? "#practice/errors" : "#practice"}">${missed.length ? t("ฝึกข้อที่พลาด", "Practise mistakes") : t("ฝึกชุดใหม่", "New practice session")}</a>${session.minicheck ? `<a class="act ghost" href="#lesson/${session.minicheck}">${t("กลับไปที่บทเรียน", "Back to the chapter")}</a>` : ""}<a class="act ghost" href="#progress">${t("ดูความคืบหน้า", "See progress")}</a></div>
     ${items.length ? `<section class="section"><div class="section-head"><h2>${mock ? t("เฉลยครบทุกข้อ", "Full answer review") : t("ย้อนดูคำตอบที่พลาด", "Review missed answers")}</h2></div>
     ${items.map((item, index) => {
       const q = item.question;
       const answer = item.selected === null ? t("ไม่ได้ตอบ", "Unanswered") : esc(q.options[item.selected][lang]);
-      return `<details class="review-item"><summary>${n(index + 1)}. ${esc(q.prompt[lang])}</summary><p class="subtle">${t("คำตอบของคุณ", "Your answer")} · ${answer}</p><p class="accent">${t("คำตอบที่ถูก", "Correct answer")} · ${esc(q.options[q.correct][lang])}</p><p>${esc(q.explanation[lang])}</p>${sources(ctx(), q.sources)}</details>`;
+      return `<details class="review-item"><summary>${n(index + 1)}. ${esc(q.prompt[lang])}</summary><p class="subtle">${t("คำตอบของคุณ", "Your answer")} · ${answer}</p><p class="accent">${t("คำตอบที่ถูก", "Correct answer")} · ${esc(q.options[q.correct][lang])}</p><p class="why-label">${t("ทำไม?", "Why?")}</p><p>${esc(q.explanation[lang])}</p>${listenButton(`review-${q.id}`, q.explanation.th, t("ฟังคำอธิบาย", "Listen to the explanation"))}${sources(ctx(), q.sources)}</details>`;
     }).join("")}</section>` : ""}</section>`;
 }
 
-function begin(items, mode = "practice") {
+function begin(items, mode = "practice", minicheck = null) {
   if (!items.length) {
     putNotice(t("ยังไม่มีข้อที่ตรงกับตัวเลือกนี้", "No questions match this selection."));
     return;
   }
   const next = {
-    mode, items: items.map(q => questionOrder(q)), current: 0, done: false,
+    mode, minicheck, items: items.map(q => questionOrder(q)), current: 0, done: false,
     deadline: mode === "mock" ? Date.now() + 180 * 60_000 : 0,
   };
   if (mode === "mock") {
@@ -411,7 +414,7 @@ async function restoreMock() {
   timer = setInterval(sessionClock, 500);
 }
 
-async function startPractice(values, origin, chapter) {
+async function startPractice(values, origin, chapter, minicheck = null) {
   const id = viewId;
   try {
     if (origin) origin.disabled = true;
@@ -421,7 +424,7 @@ async function startPractice(values, origin, chapter) {
     const items = chooseQuestions(bank, Number(values.count), state.questions, {
       level: Number(values.level) || 0, lesson: chapter, pool: values.pool, saved: state.saved,
     });
-    begin(items);
+    begin(items, "practice", minicheck);
   } catch {
     if (id === viewId) problem();
   } finally {
@@ -464,6 +467,11 @@ function finish(target = session) {
     });
   }
   target.result = grade(target.items);
+  // v6.0 mini-check: al terminar el chequeo corto, el capítulo queda
+  // marcado como leído (refuerzo, no examen: sin penalización).
+  if (target.mode === "practice" && target.minicheck) {
+    commit(latest => { latest.lessons[target.minicheck] = productDate(); });
+  }
   if (current === "session" && session === target) render();
 }
 
@@ -520,7 +528,9 @@ function sound(kind) {
 }
 
 function unlockAudio() {
-  if (!state.sound || current !== "play") return;
+  // v6.0: el synth también suena en el feedback de quiz (session), no solo
+  // en juegos. Se crea tras un gesto del usuario, como antes.
+  if (!state.sound || (current !== "play" && current !== "session")) return;
   try {
     const Audio = window.AudioContext || window.webkitAudioContext;
     if (!Audio) return;
@@ -633,6 +643,11 @@ document.addEventListener("click", event => {
   } else if (action === "lesson-practice") {
     const chapter = catalog.lessons.find(lesson => lesson.id === button.dataset.id);
     if (chapter) startPractice({ subject: chapter.subject, count: 10 }, button, chapter.id);
+  } else if (action === "lesson-minicheck") {
+    const chapter = catalog.lessons.find(lesson => lesson.id === button.dataset.id);
+    if (chapter) startPractice({ subject: chapter.subject, count: 2 }, button, chapter.id, chapter.id);
+  } else if (action === "teach-listen") {
+    if (!speakKey(button.dataset.speech)) putNotice(t("เสียงอ่านไม่พร้อมในอุปกรณ์นี้", "Read-aloud isn’t available on this device."));
   } else if (action === "start-mock") startMock(button);
   else if (action === "save-question" && session && !session.done) {
     const id = session.items[session.current].question.id;
@@ -741,6 +756,7 @@ document.addEventListener("submit", event => {
     item.selected = Number(values.answer);
     item.revealed = true;
     commit(latest => recordAnswer(latest, item.question, item.selected === item.question.correct));
+    sound(item.selected === item.question.correct ? "correct" : "wrong");
     updateSession();
     main.querySelector("[data-action=next-question]")?.focus({ preventScroll: true });
   }

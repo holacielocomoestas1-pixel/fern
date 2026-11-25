@@ -1,0 +1,124 @@
+/* ===== Fern v6.0 — capa docente (Fase 2+3) =====
+   Estilos de la capa "enseñar como a un niño de 5 años", historias,
+   escucha, «Cómo vamos» y «Empieza aquí».
+   Reutiliza las variables y el vidrio KITE de fern.css (verde intacto). */
+
+/* ---------- Tarjetas docentes (vista de lección) ---------- */
+.teach-block { margin: 4px 0 16px; }
+.teach-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  padding: 13px 15px; margin: 0 0 10px; box-shadow: var(--shadow-sm);
+}
+.teach-card--hook { border-color: rgba(201, 239, 185, .35); }
+.teach-card__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 6px;
+}
+.teach-card__label { color: var(--green); font-size: 13px; font-weight: 750; letter-spacing: .01em; }
+.teach-card p { margin: 0; line-height: 1.6; font-size: 15.5px; }
+.teach-steps { margin: 2px 0 0; padding-inline-start: 20px; line-height: 1.6; font-size: 15.5px; }
+.teach-steps li { margin: 5px 0; }
+.teach-steps li::marker { color: var(--green); font-weight: 700; }
+
+/* ---------- Botón «Escuchar» ---------- */
+.listen-btn {
+  flex: 0 0 auto; min-height: 34px; padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--glass-border); background: var(--glass);
+  color: var(--green); font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
+.listen-btn:active { transform: scale(.96); }
+.listen-btn.speaking { background: var(--green-soft); border-color: var(--green); }
+
+/* ---------- Tarjeta «¿Por qué?» ---------- */
+.why-card {
+  background: var(--green-soft); border: 1px solid rgba(201, 239, 185, .28);
+  border-radius: 16px; padding: 12px 14px; margin: 10px 0; line-height: 1.6;
+}
+.why-card__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 4px;
+}
+.why-card__title { color: var(--green); font-size: 14px; font-weight: 800; }
+.why-card p { margin: 0; color: var(--ink); font-size: 15px; font-weight: 500; }
+
+/* ---------- «Empieza aquí» (Home, UNA sola fila compacta) ---------- */
+.start-here {
+  display: flex; align-items: stretch;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: 22px; box-shadow: var(--shadow); overflow: hidden;
+  margin: 8px 0 0;
+}
+.start-here__main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px;
+  min-height: 50px; padding: 7px 10px 7px 14px; border: 0;
+  background: transparent; color: var(--ink); text-align: start; cursor: pointer;
+}
+.start-here__main:active { background: var(--soft); }
+.start-here__ic {
+  flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--green-soft); font-size: 19px;
+}
+.start-here__txt { flex: 1; min-width: 0; display: grid; }
+.start-here__txt strong {
+  font-size: 15px; font-weight: 750; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.start-here__chev { color: var(--mut); font-size: 22px; font-weight: 400; }
+.start-here__progress {
+  flex: 0 0 52px; display: grid; place-items: center;
+  border: 0; border-left: 1px solid var(--line); background: transparent;
+  font-size: 20px; cursor: pointer;
+}
+.start-here__progress:active { background: var(--soft); }
+
+/* La tira «Empieza aquí» añade altura a Home: para que el objetivo de hoy
+   siga viéndose entero sin deslizar (390×844, dock ~778px), recortar en
+   móvil el arte del héroe (el bloque compacto v4.5 de fern.css lo deja en
+   22svh; aquí baja a 16svh) y aflojar 2px en tres paddings de Home.
+   Medido en QA: todayBottom ≈ 761px. No se toca la entrada Academy. */
+@media (max-width: 760px) {
+  .hero .hero-art img { height: min(92vw, 16svh, 230px); }
+  .hero .hero-text { padding-bottom: 8px; }
+  .home-actions .home-row { min-height: 42px; }
+  .today { padding-top: 8px; }
+}
+
+/* ---------- Interruptor de sonido (Perfil) ---------- */
+.teach-switch {
+  flex: 0 0 auto; width: 50px; height: 30px; border-radius: 999px;
+  background: var(--track); position: relative; transition: background .2s ease;
+}
+.teach-switch i {
+  position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+  border-radius: 50%; background: #fff; transition: transform .2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+}
+.teach-switch.on { background: var(--green); }
+.teach-switch.on i { transform: translateX(20px); }
+
+/* ---------- «Cómo vamos» ---------- */
+.progress-row { margin: 0 0 14px; }
+.progress-row__top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.progress-row__top b { font-size: 15.5px; font-weight: 700; }
+.progress-pct { color: var(--green); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.progress-row .bar { display: block; }
+.progress-row p { margin: 5px 0 0; }
+.next-step-card { border-color: rgba(201, 239, 185, .35); }
+
+/* ---------- Escucha ---------- */
+.listen-stage {
+  background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  padding: 18px 16px 14px; text-align: center; box-shadow: var(--shadow-sm);
+}
+.listen-big { width: 100%; min-height: 54px; font-size: 17px; }
+.listen-stage .text-action { margin-top: 10px; font-size: 14.5px; }
+.listen-text {
+  margin: 12px 0 0; padding: 12px 14px; border-radius: 14px;
+  background: var(--green-soft); color: var(--ink);
+  font-size: 17px; font-weight: 600; line-height: 1.6; text-align: start;
+}
+
+/* ---------- Historias ---------- */
+.story-body p { margin: 0 0 10px; font-size: 16.5px; line-height: 1.75; }
+.story-body p:last-of-type { margin-bottom: 0; }
