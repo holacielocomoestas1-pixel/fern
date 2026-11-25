@@ -428,7 +428,10 @@ function masteryFor(sid) {
   var mistakes = G.mistakes.filter(function (m) { return m.sid === sid; }).length;
   var cleanPct = Math.max(0, (totalQ - mistakes) / totalQ);
   var lessonPct = doneL / totalL;
-  var mastery = (quizPct === null)
+  /* Sin actividad (sin lecciones, sin quiz, sin errores) el dominio es 0:
+     cleanPct vale 1 por defecto y regalaba un 30% a materias sin empezar. */
+  var hasActivity = doneL > 0 || quizPct !== null || mistakes > 0;
+  var mastery = !hasActivity ? 0 : (quizPct === null)
     ? Math.round(lessonPct * 70 + cleanPct * 30)
     : Math.round(lessonPct * 40 + quizPct * 40 + cleanPct * 20);
   return { doneL: doneL, totalL: totalL, lessonPct: lessonPct, best: best, totalQ: totalQ,
