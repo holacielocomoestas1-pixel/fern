@@ -1,9 +1,10 @@
 'use strict';
 /* Fern service worker — app shell offline. Generado por gen-sw.js; no editar a mano. */
-const CACHE = 'fern-v8.2';
+const CACHE = 'fern-v8.3';
 const SHELL = [
   './',
   'index.html',
+  '.vercelignore',
   'app.js',
   'assets/hero/fern-reading-1254.webp',
   'assets/hero/fern-reading-640.webp',
@@ -131,6 +132,7 @@ const SHELL = [
   'fern-academia/games/rally3d/assets/software-kart-3.webp',
   'fern-academia/games/rally3d/assets/software-kart-4.webp',
   'fern-academia/games/rally3d/assets/software-kart-5.webp',
+  'fern-academia/games/rally3d/atmosphere.mjs',
   'fern-academia/games/rally3d/audio.mjs',
   'fern-academia/games/rally3d/audio.test.mjs',
   'fern-academia/games/rally3d/camera-fixture.mjs',
@@ -142,6 +144,7 @@ const SHELL = [
   'fern-academia/games/rally3d/classic/race.mjs',
   'fern-academia/games/rally3d/courses.mjs',
   'fern-academia/games/rally3d/courses.test.mjs',
+  'fern-academia/games/rally3d/fern-mark.mjs',
   'fern-academia/games/rally3d/game.mjs',
   'fern-academia/games/rally3d/gamepad.mjs',
   'fern-academia/games/rally3d/gamepad.test.mjs',
@@ -149,6 +152,7 @@ const SHELL = [
   'fern-academia/games/rally3d/item-quiz.test.mjs',
   'fern-academia/games/rally3d/kart-mesh.mjs',
   'fern-academia/games/rally3d/karts.mjs',
+  'fern-academia/games/rally3d/karts.test.mjs',
   'fern-academia/games/rally3d/model.mjs',
   'fern-academia/games/rally3d/model.test.mjs',
   'fern-academia/games/rally3d/pilot.mjs',
@@ -161,10 +165,14 @@ const SHELL = [
   'fern-academia/games/rally3d/render-math.mjs',
   'fern-academia/games/rally3d/render-shaders.mjs',
   'fern-academia/games/rally3d/renderer.mjs',
+  'fern-academia/games/rally3d/renderer.test.mjs',
+  'fern-academia/games/rally3d/software-model.mjs',
+  'fern-academia/games/rally3d/software-scenery.mjs',
   'fern-academia/games/rally3d/software.mjs',
   'fern-academia/games/rally3d/sound-worlds.mjs',
   'fern-academia/games/rally3d/style.css',
   'fern-academia/games/rally3d/world-fixtures.mjs',
+  'fern-academia/games/rally3d/world-flora.mjs',
   'fern-academia/games/rally3d/world-geometry.mjs',
   'fern-academia/games/rally3d/world-scenery.mjs',
   'fern-academia/games/rally3d/world-track.mjs',
