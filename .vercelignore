@@ -1,0 +1,9 @@
+# Archivos del repo que NO se publican en Vercel.
+# Espejo exacto de lo que el staging por subida de archivos ya excluía.
+# Todo lo demás (incl. preview/, web/, catalogo.html) SÍ se publica, como hasta ahora.
+README.md
+EMPIEZA-AQUI.md
+Fern-Guia-Mascota.pdf
+source/
+JUGAR.html
+jugar.mjs
