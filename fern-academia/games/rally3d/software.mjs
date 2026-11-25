@@ -1,13 +1,12 @@
 import { viewFor } from "./render-math.mjs";
 import { inBridge, roadPoint, warningMarks } from "./world-track.mjs";
-import { assetURL, blendHex, forVisibleFixtures } from "./world.mjs";
+import { blendHex, forVisibleFixtures } from "./world.mjs";
 import { fixtures, transformFace } from "./world-fixtures.mjs";
-import { drawPilot2D, loadPilotImages } from "./pilot.mjs";
+import { createSoftwareModels } from "./software-model.mjs";
+import { createSoftwareScenery } from "./software-scenery.mjs";
 
 const TAU = Math.PI * 2;
 const NEAR = .30;
-const SPAN = 4.364;
-const ANGLES = 12;
 const signAlphabet = {
   A:[6,9,9,15,9,9], B:[14,9,14,9,9,14], D:[14,9,9,9,9,14], E:[15,8,14,8,8,15], F:[15,8,14,8,8,8], C:[7,8,8,8,8,7],
   G:[7,8,11,9,9,7], H:[9,9,15,9,9,9], I:[7,2,2,2,2,7], L:[8,8,8,8,8,15],
@@ -283,7 +282,7 @@ function makeCourseArt(course, world) {
   return { tiles, props, pads, gates, signs, labels, structures, warnings };
 }
 
-function drawSkies(ctx, width, height, camera, project, env, theme, variant, time, landscape) {
+function drawSkies(ctx, width, height, camera, project, env, theme, variant, time, scenery, calm) {
   const h = limit(height / 2 + project.f*project.forward[1]/Math.max(.22,Math.hypot(project.forward[0],project.forward[2])), -height*.7, height*1.7);
   const yaw = Math.atan2(project.forward[0],project.forward[2]);
   const gradient=ctx.createLinearGradient(0,0,0,Math.max(1,limit(h+height*.24,1,height)));
@@ -291,40 +290,6 @@ function drawSkies(ctx, width, height, camera, project, env, theme, variant, tim
   gradient.addColorStop(1,color(env.skyBottom.map(n=>n*255)));
   ctx.fillStyle=gradient;
   ctx.fillRect(0,0,width,height);
-  if (landscape?.naturalWidth) {
-    const tileW = Math.max(width*.55,project.f*1.55);
-    const tileH = Math.max(height*.35, project.f*.67);
-    const start = width*.5 - yaw/(Math.PI*.5) * tileW;
-    const first=Math.floor(-start/tileW)-1;
-    const top = h-tileH*.51;
-    for(let i=first; start+i*tileW < width+1; i++){
-      const x=start+i*tileW, y=top;
-      if(i%2===0) ctx.drawImage(landscape,x,y,tileW+1,tileH);
-      else {
-        ctx.save();
-        ctx.translate(x+tileW,y);
-        ctx.scale(-1,1);
-        ctx.drawImage(landscape,0,0,tileW+1,tileH);
-        ctx.restore();
-      }
-    }
-    if(top+tileH*.24>0){
-      const topCloud=ctx.createLinearGradient(0,top,0,top+tileH*.24);
-      const ratio=limit(top/Math.max(1,limit(h+height*.24,1,height)),0,1);
-      const matching=env.skyTop.map((n,i)=>mix(n,env.skyBottom[i],ratio)*255);
-      topCloud.addColorStop(0,color(matching));
-      topCloud.addColorStop(1,`rgba(${matching.map(Math.round).join(",")},0)`);
-      ctx.fillStyle=topCloud;
-      ctx.fillRect(0,top,width,tileH*.24);
-    }
-    const floorTop=limit(h+tileH*.33,0,height-1);
-    const floor=ctx.createLinearGradient(0,floorTop,0,Math.max(floorTop+1,h+tileH*.495));
-    floor.addColorStop(0,"transparent");
-    floor.addColorStop(1,theme.land);
-    ctx.fillStyle=floor;
-    ctx.fillRect(0,floorTop,width,height-floorTop);
-    return;
-  }
   const sun = project.vector([camera.x+env.sunDirection[0]*140,camera.y+ env.sunDirection[1]*140,camera.z+env.sunDirection[2]*140]);
   if (sun[2] > 8) {
     const [x,y] = project.plane(sun);
@@ -340,33 +305,7 @@ function drawSkies(ctx, width, height, camera, project, env, theme, variant, tim
     ctx.arc(x,y,height*(variant==="lantern"?.025:.045),0,TAU);
     ctx.fill();
   }
-  for (let i=0;i<13;i++) {
-    const position=((i*.333-yaw*.575)%1+1)%1;
-    const cx=position*width;
-    const cy=h-height*(.07+(Math.sin(i*2.43)+1)*.085);
-    const wind=variant==="lantern"?height*.002:height*(.009+(Math.cos(i*1.49)+1)*.004);
-    if (cy<0||cy>h||h<=0) continue;
-    ctx.fillStyle=variant==="lantern"?"#ffebcdb1":"rgba(247,252,228,.19)";
-    ctx.beginPath();
-    ctx.ellipse(cx,cy,variant==="lantern"?wind:wind*5.2,wind,0,0,TAU);
-    ctx.fill();
-  }
-  for (let layer=0;layer<3;layer++) {
-    const base=h+height*(.115+.047*layer);
-    const amp=height*(.073+.023*layer);
-    ctx.fillStyle=[theme.peak,theme.hill,variant==="river"?theme.water:theme.land][layer];
-    ctx.beginPath();
-    ctx.moveTo(-2,height+2);
-    for(let i=0;i<=26;i++) {
-      const x=width*i/26;
-      const phase=i*.43+yaw*(3.25+layer*.55)+layer*8.1;
-      const shape=Math.abs(Math.sin(phase))*.66+Math.abs(Math.sin(phase*.43-1.7))*.35+Math.abs(Math.sin(phase*1.92))*.18;
-      ctx.lineTo(x,base-amp*shape);
-    }
-    ctx.lineTo(width+2,height+2);
-    ctx.closePath();
-    ctx.fill();
-  }
+  scenery.drawAtmosphere(ctx,width,height,h,project.f,yaw,env,theme,variant,calm?0:time);
   const floorTop=limit(h+height*.28,0,height-1);
   const floor=ctx.createLinearGradient(0,floorTop,0,height);
   floor.addColorStop(0,"transparent");
@@ -387,21 +326,11 @@ function drawSkies(ctx, width, height, camera, project, env, theme, variant, tim
   }
 }
 
-function prop(ctx, item, xy, scale, tone, alpha, foliage) {
+function prop(ctx, item, xy, scale, tone, alpha, scenery, course, solidTone) {
   const [x,y]=xy;
   const size=item.size*scale;
   const { type }=item;
-  const image=foliage[type];
-  if (image?.naturalWidth) {
-    const width=(item.width||item.size*.82)*scale;
-    ctx.save();
-    ctx.globalAlpha=1-alpha*.019;
-    ctx.translate(x,y);
-    if(item.flip)ctx.scale(-1,1);
-    ctx.drawImage(image,-width*.5,-size,width,size);
-    ctx.restore();
-    return;
-  }
+  if (scenery.drawProp(ctx,item,x,y,scale,solidTone,alpha,course.id)) return;
   const draw=(points,paint)=>scaledShape(ctx,x,y,size,points,tone(paint));
   if (type==="pine") {
     draw([[-.07,0],[.076,0],[.052,-.72],[-.038,-.72]], "bark");
@@ -470,40 +399,16 @@ function drawGem(ctx, point, scale, time, index, special) {
   polygon(ctx,[[x,y-r],[x+r*.12,y],[lx,y]],"#fff7df");
 }
 
-function defaultSprite(ctx, size, id, rear) {
-  const colors = ["#b5d77c","#dc9296","#f0a06f","#7ec5d5","#a99fc7","#79b0a4"];
-  ctx.fillStyle="#222b29";
-  ctx.fillRect(-size*.43,-size*.13,size*.26,size*.25);
-  ctx.fillRect(size*.18,-size*.13,size*.26,size*.25);
-  ctx.fillStyle=colors[id%6];
-  ctx.beginPath();
-  ctx.ellipse(0,-size*.09,size*.429,size*.16,0,0,TAU); ctx.fill();
-  ctx.fillStyle="#ffe6b6";
-  ctx.beginPath();
-  ctx.ellipse(0,-size*.32,size*.187,size*.22,0,0,TAU); ctx.fill();
-  if (!rear) {
-    ctx.fillStyle="#6f3d2c";
-    ctx.beginPath();
-    ctx.ellipse(0,-size*.295,size*.09,size*.076,0,0,TAU); ctx.fill();
-  }
-}
-
-function drawKart(ctx, point, scale, vehicle, camera, atlas, pilots, time, reducedMotion) {
+function drawKart(ctx, point, scale, vehicle, camera, models, surroundings, time, reducedMotion, view) {
   const [x,y]=point;
-  const towardX=camera.x-vehicle.x;
-  const towardZ=camera.z-vehicle.z;
-  const difference=Math.atan2(towardX,towardZ)-vehicle.yaw;
-  const a=((Math.round(difference/TAU*ANGLES)%ANGLES)+ANGLES)%ANGLES;
-  const elevation=Math.atan2(Math.max(0,camera.y-vehicle.y),Math.hypot(towardX,towardZ));
-  const e=elevation>.58?2:elevation>.265?1:0;
-  const index=e*ANGLES+a;
-  const image=atlas[vehicle.id] || atlas[0];
-  const sprite=Math.min(880,SPAN*scale);
+  const roadHeight=Number.isFinite(vehicle.roadY)?vehicle.roadY:vehicle.y;
+  const foot=view.vector([vehicle.x,roadHeight+.018,vehicle.z]);
+  const shadow=foot[2]>.3?view.plane(foot):point;
   const wheel=scale*.64;
   ctx.save();
   if (vehicle.ghost) ctx.globalAlpha=.49+Math.sin(time*2)*.09;
   ctx.fillStyle="rgba(12,26,22,.35)";
-  ctx.beginPath();ctx.ellipse(x,y,wheel*1.43,wheel*.48,-(camera.roll||0),0,TAU);ctx.fill();
+  ctx.beginPath();ctx.ellipse(...shadow,wheel*1.43,wheel*.48,-(camera.roll||0),0,TAU);ctx.fill();
   if (!reducedMotion && (vehicle.boost || vehicle.drift || vehicle.offroad)) {
     const heated=vehicle.boost>0;
     for(let i=0;i<(heated?13:9);i++) {
@@ -519,23 +424,9 @@ function drawKart(ctx, point, scale, vehicle, camera, atlas, pilots, time, reduc
   }
   ctx.translate(x,y);
   ctx.rotate((vehicle.roll||0)*.40-(camera.roll||0));
-  if (drawPilot2D(ctx,pilots,vehicle,camera,scale,reducedMotion)) { ctx.restore(); return; }
-  if(image?.complete&&image.naturalWidth>0){
-    const cell = image.naturalWidth / 6;
-    ctx.drawImage(image,(index%6)*cell,Math.floor(index/6)*cell,cell,cell,
-      -sprite*.5,-sprite*.72,sprite,sprite);
-  } else defaultSprite(ctx,scale*2.10,vehicle.id,a>3&&a<9);
+  const rendered=models.draw(ctx,vehicle,camera,scale,surroundings,time,reducedMotion);
   ctx.restore();
-}
-
-function loadAtlases() {
-  if (typeof Image === "undefined") return [];
-  return Array.from({length:6},(_,i)=>{
-    const image=new Image();
-    image.decoding="async";
-    image.src=new URL(`./assets/software-kart-${i}.webp`,import.meta.url).href;
-    return image;
-  });
+  return rendered;
 }
 
 function paintedSign(ctx, label, width, height) {
@@ -555,19 +446,10 @@ function paintedSign(ctx, label, width, height) {
 export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion = false } = {}) {
   const ctx = canvas.getContext("2d",{alpha:false});
   if(!ctx) throw new Error("Canvas graphics are unavailable.");
-  const atlas=loadAtlases();
-  const pilots=loadPilotImages();
-  const load=url=>{
-    if(typeof Image==="undefined")return null;
-    const image=new Image();
-    image.decoding="async";
-    image.src=url;
-    return image;
-  };
-  const foliage=Object.fromEntries(["pine","blossom","palm","crag"].map(name=>[name,load(assetURL("prop-"+name))]));
-  const horizons=new Map();
+  const models=createSoftwareModels(canvas);
+  const scenery=createSoftwareScenery(canvas);
   const stats={width:canvas.width,height:canvas.height,drawCalls:0,triangles:0,frameMs:0,contextLost:false};
-  let world, course, environment, art, scheme, shades, landscape, gone=false;
+  let world, course, environment, art, scheme, shades, gone=false;
 
   function setWorld(next) {
     if (!next?.course) throw new Error("The software renderer needs the 3D circuit.");
@@ -583,8 +465,8 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
       stripe:blendHex(base.stripe,course.art?.accent || base.stripe,.23)};
     shades = colorTable(scheme,environment);
     art=makeCourseArt(course,world);
-    if(!horizons.has(world.panorama)) horizons.set(world.panorama,load(world.panorama));
-    landscape=horizons.get(world.panorama);
+    models.setWorld(environment);
+    scenery.setWorld(course.id);
   }
 
   function resize(w,h,dpr=1) {
@@ -610,7 +492,8 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
     const sheets=[];
     stats.drawCalls=0;
     stats.triangles=0;
-    drawSkies(ctx,w,h,camera,view,environment,scheme,course.theme || course.id,time,landscape);
+    models.beginFrame();
+    drawSkies(ctx,w,h,camera,view,environment,scheme,course.theme || course.id,time,scenery,reducedMotion || effects?.calm);
     const enqueue=(center,type,data,radius)=>{
       const p=view.vector(center);
       if(p[2]<-radius||p[2]>environment.fogFar+radius)return;
@@ -668,7 +551,7 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
       const scale=focal/p[2];
       if(type===1) {
         if(data.size*scale<3)continue;
-        prop(ctx,data,point,scale,tone,fog,foliage);
+        prop(ctx,data,point,scale,tone,fog,scenery,course,name=>shades[name][0]);
       } else if(type===2){
         const a=view.vector(data.a), b=view.vector(data.b);
         if(a[2]<1 || b[2]<1 || view.forward[1]>.35)continue;
@@ -683,7 +566,7 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
         paintedSign(ctx,data.text,maxWidth,Math.max(6,scale*.65));
         ctx.restore();
       } else if(type===3) drawGem(ctx,point,scale,time,data.index,data.special);
-      else drawKart(ctx,point,scale,data,camera,atlas,pilots,time,reducedMotion);
+      else drawKart(ctx,point,scale,data,camera,models,environment,time,reducedMotion || effects?.calm,view);
       stats.drawCalls++;
     }
     if (!reducedMotion && boost>.1) {
@@ -701,8 +584,10 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
       ctx.globalAlpha=1;
     }
     stats.frameMs=performance.now()-started;
+    stats.generatedModelViews=models.generated;
+    stats.cachedModelViews=models.cached;
     return true;
   }
 
-  return { setWorld, setVehicles() {}, draw, resize, dispose(){ gone=true; art=null; }, stats };
+  return { setWorld, setVehicles:models.setVehicles, draw, resize, dispose(){ gone=true; art=null; scenery.dispose(); models.dispose(); }, stats };
 }

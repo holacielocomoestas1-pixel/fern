@@ -100,7 +100,7 @@ function secondary(action, label) {
 
 export function infrastructure(lang, exit) {
   const t = (en, th) => text(lang, en, th);
-  return `<canvas class="rr3-canvas" aria-label="${t("Live 3D race scene", "ภาพสนามแข่งสามมิติ")}" role="img"></canvas>
+  return `<canvas class="rr3-canvas" aria-label="${t("3D race scene. In the menu, drag or use left and right to orbit the kart.", "ภาพสนามแข่งสามมิติ ในเมนู ลากหรือกดซ้ายขวาเพื่อหมุนรอบรถ")}" role="img"></canvas>
     <div class="rr3-keyart" aria-hidden="true"></div><div class="rr3-lens" aria-hidden="true"></div><div class="rr3-film" aria-hidden="true"></div><div class="rr3-flare" aria-hidden="true"></div>
     <header class="rr3-toolbar">
       <a href="${safe(exit)}" class="rr3-icon" data-act="back" aria-label="${t("Back to playroom", "กลับห้องเกม")}" title="${t("Back to playroom", "กลับห้องเกม")}">${glyph("exit")}</a>

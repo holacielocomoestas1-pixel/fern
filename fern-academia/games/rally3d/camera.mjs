@@ -163,22 +163,24 @@ export function createDirector() {
     previousPose = undefined;
   }
 
-  function get({ phase, elapsed = 0, course, player, pose, mode = "chase", reducedMotion = false, dt = 1 / 60, aspect = 16 / 9 }) {
+  function get({ phase, elapsed = 0, course, player, pose, mode = "chase", reducedMotion = false, dt = 1 / 60, aspect = 16 / 9, orbit = 0 }) {
     const time = Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0;
     const portrait = clamp((.92 - aspect) * 2.35, 0, 1);
     const grid = () => chase(course, player, pose, "chase", true, time, aspect);
     let next;
     if (phase === "menu") {
-      const pan = reducedMotion ? 0 : Math.sin(time * .37);
-      const eye = relative(pose, 3.25 - pan * .45, 3.2 + pan * .7, 2.23);
-      const target = relative(pose, 0, -.16, .97);
-      const across = clamp((aspect - 1) * 1.15, 0, .88);
+      const angle = .60 - .10 * portrait + orbit;
+      const distance = 5.50 + .78 * portrait;
+      const eye = relative(pose, Math.cos(angle) * distance, Math.sin(angle) * distance, 2.52);
+      eye.y = Math.max(eye.y, cameraFloor(course, player.s, eye));
+      const target = relative(pose, 0, -.05, 1.23 - 1.42 * portrait);
+      const across = clamp((aspect - .98) * 2.44, 0, 2.25);
       const x = target.x - eye.x;
       const z = target.z - eye.z;
       const lateral = Math.hypot(x, z) || 1;
       target.x -= z * across / lateral;
       target.z += x * across / lateral;
-      next = shot(eye, target, 47 + 16 * portrait, "lobby");
+      next = shot(eye, target, 45 + 17 * portrait, "lobby");
     } else if (phase === "intro" && !reducedMotion) {
       if (time < HERO_CUT) {
         next = landscapeShot(course, time, aspect, time >= LANDMARK_PASS);

@@ -141,6 +141,7 @@ export function launch3D(container, ctx, switchToClassic) {
   let cameraMode = "chase";
   let currentWorld;
   let karts;
+  let uploadedKarts;
   let renderer;
   let resizeObserver;
   let dimensions;
@@ -174,6 +175,8 @@ export function launch3D(container, ctx, switchToClassic) {
   let frameCost = 16;
   let perfClock = 0;
   let contextOk = true;
+  let previewAngle = 0;
+  let previewDrag = null;
   let backend = new URLSearchParams(location.search).get("rallyGraphics") === "canvas" ? "canvas" : "webgl";
 
   function grid() {
@@ -187,12 +190,24 @@ export function launch3D(container, ctx, switchToClassic) {
       if (currentWorld) {
         next.setVehicles(karts ||= createKarts());
         next.setWorld(currentWorld);
+        uploadedKarts = next;
       }
     } catch (error) {
       next.dispose();
       throw error;
     }
     return next;
+  }
+
+  function prepareCourse() {
+    if (currentWorld?.course === course) return;
+    const world = createWorld(course, { staticMeshes: backend === "webgl" });
+    if (uploadedKarts !== renderer) {
+      renderer.setVehicles(karts ||= createKarts());
+      uploadedKarts = renderer;
+    }
+    renderer.setWorld(world);
+    currentWorld = world;
   }
 
   function replaceCanvas() {
@@ -221,6 +236,7 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   const driving = () => phase === "run";
+  const previewing = () => phase === "menu" || phase === "settings" && settingsBack === "menu";
   const active = () => ["run", "intro", "grid", "finish"].includes(phase);
   const animated = () => active();
   const pressed = action => [...keyHeld].some(code => KEYS[code] === action) || [...pointers.values()].includes(action);
@@ -366,6 +382,8 @@ export function launch3D(container, ctx, switchToClassic) {
     scene.dataset.phase = phase;
     scene.dataset.calm = String(reduced());
     scene.dataset.menuSettings = String(phase === "settings" && settingsBack === "menu");
+    canvas.tabIndex = phase === "menu" ? 0 : -1;
+    if (phase !== "menu") previewDrag = null;
     toolbar.back.inert = phase === "quiz";
     repaint = true;
     refreshButtons();
@@ -418,6 +436,7 @@ export function launch3D(container, ctx, switchToClassic) {
     run = grid();
     director.reset();
     paintPanel();
+    callFrame();
     setFocus(`[data-mode="${mode}"]`);
   }
 
@@ -436,6 +455,7 @@ export function launch3D(container, ctx, switchToClassic) {
       selectCourse(COURSES.findIndex(track => track.id === CUPS[cupChoice].ids[0]));
     } else selectCourse(index);
     paintPanel();
+    callFrame();
   }
 
   function resetCup() {
@@ -461,10 +481,7 @@ export function launch3D(container, ctx, switchToClassic) {
           else requestAnimationFrame(() => document.hidden ? resolve() : requestAnimationFrame(resolve));
         });
         if (gone || phase === "lost") return;
-        const world = createWorld(course);
-        renderer.setVehicles(karts ||= createKarts());
-        renderer.setWorld(world);
-        currentWorld = world;
+        prepareCourse();
       } catch {
         if (!gone) graphicsInterrupted();
         return;
@@ -654,8 +671,9 @@ export function launch3D(container, ctx, switchToClassic) {
     return car.friction > .28;
   }
 
-  function visualCars(rolling) {
-    return run.racers.map(car => {
+  function visualCars(rolling, showpiece) {
+    const racers = showpiece ? [{ ...run.player, s: 15, offset: .8, speed: 0 }] : run.racers;
+    return racers.map(car => {
       const progress = rolling ? Math.min(1, rolling / FINISH_SECONDS) : 0;
       const rollOut = Math.min(Math.max(0, car.speed), 42) * .60 * (1 - Math.exp(-rolling * 1.55));
       const avatar = rolling ? { ...car, s: car.s + rollOut, speed: car.speed * (1 - progress), boost: 0, drift: false } : car;
@@ -669,16 +687,18 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function draw(dt) {
-    if (!currentWorld || phase === "menu" || phase === "settings" && settingsBack === "menu") return;
+    const showpiece = previewing();
+    if (showpiece && !loadingCourse) prepareCourse();
+    if (!currentWorld || currentWorld.course !== course) return;
     const rolling = phase === "finish" ? phaseTime : phase === "result" && !reduced() ? FINISH_SECONDS : 0;
-    const vehicles = visualCars(rolling);
-    const viewPhase = phase === "menu" || phase === "settings" && settingsBack === "menu" ? "menu" :
+    const vehicles = visualCars(rolling, showpiece);
+    const viewPhase = showpiece ? "menu" :
       phase === "result" ? reduced() ? "run" : "finish" : phase === "pause" || phase === "study" || phase === "quiz" || phase === "settings" ? suspended?.phase || "run" : phase;
     const elapsed = phase === "result" ? FINISH_SECONDS : (phase === "pause" || phase === "settings") && suspended ? suspended.elapsed : phaseTime;
     const camera = director.get({
       phase: viewPhase, elapsed, course, player: { ...run.player, s: vehicles[0].s },
       pose: vehicles[0], mode: driving() && (pressed("rear") || controller?.rear) ? "rear" : cameraMode, reducedMotion: reduced(), dt,
-      aspect: dimensions?.height ? dimensions.width / dimensions.height : 16 / 9,
+      aspect: dimensions?.height ? dimensions.width / dimensions.height : 16 / 9, orbit: previewAngle,
     });
     // Camera shake from hits, hazards, bumps and off-track moments. The
     // trauma value is fed by processEvents and decays in frame().
@@ -706,7 +726,7 @@ export function launch3D(container, ctx, switchToClassic) {
     renderer.draw({
       camera, vehicles, time: renderClock,
       boost: streak,
-      effects: { pickups, collectedItems: run.collectedItems, lap, raceTime: run.time, itemsEnabled: mode !== "trial", calm: reduced() },
+      effects: { pickups: showpiece ? [] : pickups, collectedItems: run.collectedItems, lap, raceTime: run.time, itemsEnabled: !showpiece && mode !== "trial", calm: reduced() },
     });
     if (userHudDue()) {
       values.rank.textContent = run.player.rank + " / " + run.racers.length;
@@ -993,9 +1013,14 @@ export function launch3D(container, ctx, switchToClassic) {
   function keyboardDown(event) {
     if (gone || phase === "study" || event.target?.closest("dialog[open], select, input, textarea")) return;
     if (event.altKey || event.metaKey || event.ctrlKey) return;
+    if (phase === "menu" && event.target === canvas && ["ArrowLeft", "ArrowRight"].includes(event.code)) {
+      event.preventDefault();
+      rotatePreview(event.code === "ArrowLeft" ? -.28 : .28);
+      return;
+    }
     if (event.code === "Tab") {
       const scope = phase === "quiz" ? panel : scene;
-      const focusable = [...scope.querySelectorAll("a[href], button, select")].filter(node => node.getClientRects().length && !node.disabled);
+      const focusable = [...scope.querySelectorAll("a[href], button, select, canvas[tabindex='0']")].filter(node => node.getClientRects().length && !node.disabled);
       const first = focusable[0];
       const last = focusable.at(-1);
       if (phase === "quiz" && !scope.contains(document.activeElement) ||
@@ -1045,6 +1070,28 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   scene.addEventListener("click", handleClick, options);
+  function rotatePreview(change) {
+    const next = previewAngle + change;
+    previewAngle = Math.atan2(Math.sin(next), Math.cos(next));
+    repaint = true;
+    callFrame();
+  }
+  scene.addEventListener("pointerdown", event => {
+    if (phase !== "menu" || event.target !== canvas || event.button !== 0 || previewDrag) return;
+    previewDrag = { id: event.pointerId, x: event.clientX };
+    try { canvas.setPointerCapture(event.pointerId); } catch { }
+  }, options);
+  scene.addEventListener("pointermove", event => {
+    if (phase !== "menu" || previewDrag?.id !== event.pointerId) return;
+    const delta = event.clientX - previewDrag.x;
+    previewDrag.x = event.clientX;
+    if (delta) rotatePreview(delta * .012);
+  }, options);
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    scene.addEventListener(type, event => {
+      if (previewDrag?.id === event.pointerId) previewDrag = null;
+    }, options);
+  }
   scene.addEventListener("change", handlePreference, options);
   for (const button of holdButtons) {
     button.addEventListener("pointerdown", holdStart, options);

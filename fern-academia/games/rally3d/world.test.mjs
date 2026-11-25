@@ -1,30 +1,49 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
 import test from "node:test";
+import { auroraBand, ridgeColor, ridgeElevation } from "./atmosphere.mjs";
 import { COURSES } from "./courses.mjs";
 import { hazardOffset } from "./powers.mjs";
-import { assetURL, createWorld, forVisibleFixtures } from "./world.mjs";
+import { createWorld, forVisibleFixtures } from "./world.mjs";
 import { warningMarks } from "./world-track.mjs";
 
-test("all photographed circuits have bounded terrain, an in-world Fern identity and a dedicated horizon", () => {
+test("all circuits have bounded physical scenery, a Fern identity and dedicated procedural horizons", () => {
   const horizons = new Set();
   for (const course of COURSES) {
     const world = createWorld(course);
     assert.equal(world.palette.sign, course.name.en.toUpperCase());
     assert.match(world.palette.sign, /^FERN /);
-    assert.ok(existsSync(new URL(world.panorama)), world.panorama);
-    horizons.add(world.panorama);
+    const { horizon } = world.environment;
+    assert.ok(!("panorama" in world));
+    horizons.add(horizon.seed);
+    for (let layer = 0; layer < 4; layer++) {
+      const samples = Array.from({length: 48}, (_, i) => ridgeElevation(2 * Math.PI * i/48, layer, horizon));
+      assert.ok(samples.every(x => Number.isFinite(x) && x > -.18 && x <= .32));
+      assert.ok(Math.max(...samples) - Math.min(...samples) >= .027);
+      assert.ok(Math.abs(ridgeElevation(-Math.PI, layer, horizon) - ridgeElevation(Math.PI, layer, horizon)) < 1e-11);
+      assert.ok(ridgeColor(layer,world.environment).every(x => x >= 0 && x <= 1));
+    }
+    assert.equal(auroraBand(.84, .7, horizon).strength > 0, course.id === "aurora");
     assert.ok(world.props.length > 100 && world.props.length < 1100);
     assert.equal(world.marks.length, course.landmarks.length);
     assert.ok(warningMarks(course).length > course.hazards.length);
     const triangles = world.meshes.reduce((n, mesh) => n + mesh.positions.length / 9, 0);
-    assert.ok(triangles >= 12_000 && triangles <= 78_000, course.id + " " + triangles);
+    assert.ok(triangles >= 80_000 && triangles <= 275_000, course.id + " " + triangles);
+    assert.ok(world.meshes.some(mesh => mesh.surface === "stone"));
+    assert.equal(world.meshes.some(mesh => mesh.surface === "foliage"), course.id !== "caldera");
     assert.ok(world.meshes.every(mesh =>
       mesh.bounds?.center.every(Number.isFinite) && mesh.bounds.radius < 145));
   }
   assert.equal(horizons.size, COURSES.length);
-  for (const prop of ["pine", "blossom", "palm", "crag"])
-    assert.ok(existsSync(new URL(assetURL("prop-" + prop))), prop);
+});
+
+test("the lean CPU world preserves scenery placements without allocating GPU geometry", () => {
+  const course = COURSES[5];
+  const terrainOnly = createWorld(course, {staticMeshes: false});
+  const full = createWorld(course);
+  assert.deepEqual(terrainOnly.props,full.props);
+  assert.deepEqual(terrainOnly.environment,full.environment);
+  assert.deepEqual(terrainOnly.marks,full.marks);
+  assert.equal(terrainOnly.meshes.length,0);
 });
 
 test("both renderers receive the same moving trap as physics and collected power boxes respawn next lap", () => {

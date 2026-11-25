@@ -1,6 +1,7 @@
-import { ChunkMesh, blend, tint, clamp, rgb } from "./world-geometry.mjs";
+import { ChunkMesh, blend, tint, clamp, rgb, unit } from "./world-geometry.mjs";
 import { roadPoint, inBridge } from "./world-track.mjs";
-import { markInstances, transformFace } from "./world-fixtures.mjs";
+import { transformFace } from "./world-fixtures.mjs";
+import { buildFlora } from "./world-flora.mjs";
 
 const banks = {
   moss:{props:["pine","pine","pine","crag"], spacing:11.3, size:1.08, uplift:9},
@@ -17,7 +18,7 @@ const banks = {
 const mix=(a,b,t)=>a+(b-a)*t;
 const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 
-const bark=[.25,.21,.16], up=[0,1,0];
+const up=[0,1,0];
 function wooded(course) { return banks[course.id]||banks.moss; }
 
 // A small spatial survey avoids an exhaustive track scan per terrain vertex.
@@ -70,30 +71,37 @@ function floorSample(course,survey,spec,x,z){
   return {height:inBridge(course,f.s)?Math.min(shape,f.y-5.2):shape,noise:n,near,d};
 }
 
-export function buildScenery(course,p,random,marks){
+export function buildScenery(course,p,marks,props){
   const terrain=new ChunkMesh({surface:"land",roughness:.93});
   const structures=new ChunkMesh({roughness:.59});
   const lights=new ChunkMesh({roughness:.41,emissive:.52});
   const water=new ChunkMesh({water:true,roughness:.20});
+  const foliage=new ChunkMesh({surface:"foliage",roughness:.86},91);
+  const timber=new ChunkMesh({surface:"stone",roughness:.86},117);
+  const stone=new ChunkMesh({surface:"stone",roughness:.81},112);
   const survey=terrainSurvey(course), spec=wooded(course);
   const [minX,minZ,maxX,maxZ]=survey.bounds;
   const spacing=16, pad=150;
   const cols=Math.ceil((maxX-minX+pad*2)/spacing),rows=Math.ceil((maxZ-minZ+pad*2)/spacing);
-  let prev;
-  for(let j=0;j<=rows;j++){
-    const row=[];
-    for(let i=0;i<=cols;i++){
-      const x=minX-pad+i*spacing,z=minZ-pad+j*spacing;
-      const sample=floorSample(course,survey,spec,x,z);
-      const light=clamp(.40+.38*sample.noise+.12*Math.sin(x*.103-z*.042),0,.95);
-      const base=blend(p.terrain,p.terrainLight,light);
-      row.push({p:[x,sample.height,z],col:blend(p.verge,base,.3+.7*sample.near)});
-      if(j&&i){
-        const vertices=[prev[i-1],row[i-1],row[i],prev[i]];
-        terrain.quad(...vertices.map(v=>v.p),base,undefined,vertices.map(v=>v.col));
-      }
+  const heights = Array.from({length:rows+1},(_,j) => Array.from({length:cols+1},(_,i) => {
+    const x=minX-pad+i*spacing,z=minZ-pad+j*spacing;
+    const sample=floorSample(course,survey,spec,x,z);
+    const light=clamp(.40+.38*sample.noise+.12*Math.sin(x*.103-z*.042),0,.95);
+    const base=blend(p.terrain,p.terrainLight,light);
+    return {p:[x,sample.height,z],color:blend(p.verge,base,.3+.7*sample.near)};
+  }));
+  const normal = (j,i) => {
+    const left = heights[j][Math.max(i-1,0)].p, right = heights[j][Math.min(i+1,cols)].p;
+    const north = heights[Math.max(j-1,0)][i].p, south = heights[Math.min(j+1,rows)][i].p;
+    return unit([(left[1]-right[1])/(right[0]-left[0]),1,(north[1]-south[1])/(south[2]-north[2])]);
+  };
+  for(let j=0;j<rows;j++){
+    for(let i=0;i<cols;i++){
+      const coords=[[j,i],[j+1,i],[j+1,i+1],[j,i+1]];
+      const points=coords.map(([z,x])=>heights[z][x]);
+      terrain.quad(...points.map(v=>v.p),p.terrain,undefined,
+        points.map(v=>v.color),coords.map(args=>normal(...args)));
     }
-    prev=row;
   }
   // The verge follows the bank at sub-grid resolution, sealing the tarmac to the countryside.
   const count=Math.ceil(course.length/5);
@@ -131,7 +139,8 @@ export function buildScenery(course,p,random,marks){
       for(let i=1;i<points.length-1;i++)mesh.triangle(points[0],points[i],points[i+1],color);
     }
   }
-  return [...terrain.finish(),...water.finish(),...structures.finish(),...lights.finish()];
+  buildFlora(course,props,p,{foliage,timber,stone});
+  return [...terrain.finish(),...water.finish(),...stone.finish(),...timber.finish(),...foliage.finish(),...structures.finish(),...lights.finish()];
 }
 
 export function planting(course, random, marks=[]) {

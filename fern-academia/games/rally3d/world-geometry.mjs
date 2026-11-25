@@ -39,17 +39,17 @@ export class Mesh {
     this.normals.push(...normal);
     this.colors.push(...color);
   }
-  triangle(a, b, c, color, override, samples) {
+  triangle(a, b, c, color, override, samples, normals) {
     const raw = cross(sub(b, a), sub(c, a));
     if (dot(raw, raw) < 0.00000000001) return;
     const n = override || unit(raw);
-    this.vertex(a, n, samples?.[0] || color);
-    this.vertex(b, n, samples?.[1] || color);
-    this.vertex(c, n, samples?.[2] || color);
+    this.vertex(a, normals?.[0] || n, samples?.[0] || color);
+    this.vertex(b, normals?.[1] || n, samples?.[1] || color);
+    this.vertex(c, normals?.[2] || n, samples?.[2] || color);
   }
-  quad(a, b, c, d, color, normal, samples) {
-    this.triangle(a, b, c, color, normal, samples);
-    this.triangle(a, c, d, color, normal, samples && [samples[0], samples[2], samples[3]]);
+  quad(a, b, c, d, color, normal, samples, normals) {
+    this.triangle(a, b, c, color, normal, samples, normals);
+    this.triangle(a, c, d, color, normal, samples && [samples[0], samples[2], samples[3]], normals && [normals[0], normals[2], normals[3]]);
   }
   toMesh() {
     return {
@@ -80,7 +80,7 @@ export function box(mesh, at, sizes, color, yaw = 0) {
   }
 }
 
-export function tube(mesh, start, end, startRadius, endRadius, color, sides = 7, aspect = 1, profile = null) {
+export function tube(mesh, start, end, startRadius, endRadius, color, sides = 7, aspect = 1, profile = null, capped = true) {
   const up = unit(sub(end, start));
   if (length(up) < .5) return;
   const probe = Math.abs(up[0]) < .92 ? [1, 0, 0] : [0, 0, 1];
@@ -95,8 +95,8 @@ export function tube(mesh, start, end, startRadius, endRadius, color, sides = 7,
     const j = (i + 1) % sides;
     const faceColor = tint(color, 1 + .065 * Math.cos(i * 2));
     mesh.quad(rings[0][i], rings[1][i], rings[1][j], rings[0][j], faceColor);
-    if (startRadius > .01) mesh.triangle(start, rings[0][i], rings[0][j], tint(color, .82));
-    if (endRadius > .01) mesh.triangle(end, rings[1][j], rings[1][i], tint(color, 1.06));
+    if (capped && startRadius > .01) mesh.triangle(start, rings[0][i], rings[0][j], tint(color, .82));
+    if (capped && endRadius > .01) mesh.triangle(end, rings[1][j], rings[1][i], tint(color, 1.06));
   }
 }
 
@@ -141,7 +141,7 @@ export class ChunkMesh {
     this.size = size;
     this.cells = new Map();
   }
-  triangle(a, b, c, color, normal, samples) {
+  triangle(a, b, c, color, normal, samples, normals) {
     const key = Math.floor((a[0]+b[0]+c[0])/(3*this.size)) + "," +
       Math.floor((a[2]+b[2]+c[2])/(3*this.size));
     let cell = this.cells.get(key);
@@ -155,11 +155,11 @@ export class ChunkMesh {
       bounds[i] = Math.min(bounds[i],point[i]);
       bounds[i+3] = Math.max(bounds[i+3],point[i]);
     }
-    cell.triangle(a,b,c,color,normal,samples);
+    cell.triangle(a,b,c,color,normal,samples,normals);
   }
-  quad(a,b,c,d,color,normal,samples) {
-    this.triangle(a,b,c,color,normal,samples);
-    this.triangle(a,c,d,color,normal,samples && [samples[0],samples[2],samples[3]]);
+  quad(a,b,c,d,color,normal,samples,normals) {
+    this.triangle(a,b,c,color,normal,samples,normals);
+    this.triangle(a,c,d,color,normal,samples && [samples[0],samples[2],samples[3]],normals && [normals[0],normals[2],normals[3]]);
   }
   finish() {
     return Array.from(this.cells.values(), cell => {

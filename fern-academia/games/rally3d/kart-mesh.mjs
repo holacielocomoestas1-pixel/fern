@@ -50,12 +50,13 @@ export class Mesh {
     }
   }
 
-  finish(emissive = 0) {
+  finish(emissive = 0, material = {}) {
     return {
       positions: new Float32Array(this.positions),
       normals: new Float32Array(this.normals),
       colors: new Float32Array(this.colors),
       emissive,
+      ...material,
     };
   }
 }
@@ -74,16 +75,19 @@ function basis([pitch = 0, yaw = 0, roll = 0] = []) {
 }
 
 export function egg(mesh, origin, radii, color, options = {}) {
-  const { rings = 7, slices = 12, rotation, sheen = .085 } = options;
+  const { rings = 7, slices = 12, rotation, sheen = .085, fiber = 0, shaping } = options;
   const transform = basis(rotation);
   mesh.grid(rings, slices, (u, v) => {
     const a = Math.PI * u;
     const b = TAU * v;
     const d = [Math.sin(a) * Math.cos(b), Math.cos(a), Math.sin(a) * Math.sin(b)];
-    const p = add(origin, transform(d.map((x, i) => x * radii[i])));
-    const n = transform(unit(d.map((x, i) => x / radii[i])));
+    const organicY = Math.sin(a) * Math.sin(a);
+    const ripple = fiber * organicY * (Math.sin(5 * b + 2.1 * a) + .3 * Math.cos(9 * b - 5 * a));
+    const outline = shaping?.(d) || d;
+    const p = add(origin, transform(outline.map((x, i) => x * radii[i] * (1 + ripple))));
+    const n = transform(unit(outline.map((x, i) => x / radii[i])));
     const shade = 1 - sheen * (.5 - .5 * d[1]) + .022 * Math.sin(5 * b + 2 * a) * Math.sin(a);
-    return { p, n, color: tint(color, shade) };
+    return { p, n, color: tint(color, shade + ripple * 3) };
   });
 }
 
@@ -157,7 +161,7 @@ export function shell(mesh, stations, colorAt, slices = 18) {
 }
 
 export function latheWheel(mesh, profile, tire, rim, detail) {
-  const slices = 24;
+  const slices = 28;
   mesh.grid(profile.length - 1, slices, (u, v) => {
     const i = Math.round(u * (profile.length - 1));
     const [x, r, metal] = profile[i];
@@ -167,9 +171,12 @@ export function latheWheel(mesh, profile, tire, rim, detail) {
     const a = TAU * v;
     const radial = Math.cos(a);
     const elevated = Math.sin(a);
-    const profileX = r * radial;
-    const profileY = r * elevated;
-    const shade = metal ? tint(rim, .87 + .10 * Math.cos(5 * a) + .06 * Math.sin(3 * a)) : tint(tire, .82 + .18 * (.5 + .5 * Math.cos(15 * a)));
+    const shoulder = Math.max(0, 1 - Math.abs(x) / .153);
+    const tread = !metal && r > .31 ? (.0032 + shoulder * .0024) * Math.sin(a * 14 + x * 23.5) : 0;
+    const profileX = (r + tread) * radial;
+    const profileY = (r + tread) * elevated;
+    const shade = metal ? tint(rim, .87 + .1 * Math.cos(5 * a) + .06 * Math.sin(3 * a)) :
+      tint(tire, .89 + .16 * Math.sin(a * 14 + x * 23.5) * (.25 + .75 * shoulder));
     return { p: [x, profileX, profileY], n: [-nx, -nr * radial, -nr * elevated], color: metal === 2 ? detail : shade };
   });
 }

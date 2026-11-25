@@ -1,9 +1,12 @@
 import { blend, randomFor, rgb } from "./world-geometry.mjs";
 import { buildTrack, roadPoint } from "./world-track.mjs";
 import { buildScenery, planting } from "./world-scenery.mjs";
+import { horizonFor } from "./atmosphere.mjs";
 
-import { markInstances, panoramaFor } from "./world-fixtures.mjs";
+import { markInstances } from "./world-fixtures.mjs";
 import { hazardOffset } from "./powers.mjs";
+
+export const assetURL = file => new URL("./assets/" + file + ".webp", import.meta.url).href;
 
 const shared = {
   margin: "d6e8d4", center: "82948c", curbLight: "e7e8c2",
@@ -72,8 +75,6 @@ const worldLighting = {
   aurora: { ambient: .69, sun: [.37,.89,.81], stars: .74 },
 };
 
-export const assetURL = file => new URL("./assets/" + file + ".webp", import.meta.url).href;
-
 export function createWorld(course, { staticMeshes = true } = {}) {
   const { environment, sign, ...colors } = biomes[course.theme || course.id] || biomes.moss;
   const palette = Object.fromEntries(Object.entries({ ...shared, ...colors }).map(([id, hex]) => [id, rgb(hex)]));
@@ -89,8 +90,8 @@ export function createWorld(course, { staticMeshes = true } = {}) {
   palette.sign = course.name?.en?.toUpperCase().replace(/[^A-Z ]/g,"") || sign;
   const marks = markInstances(course);
   const track = staticMeshes ? buildTrack(course, palette, randomFor(course.seed)) : null;
-  const landscapes = staticMeshes ? buildScenery(course, palette, randomFor(course.seed ^ 0xad7f), marks) : [];
   const props = planting(course, randomFor(course.seed ^ 0xad7f), marks);
+  const landscapes = staticMeshes ? buildScenery(course, palette, marks, props) : [];
   const finish = item => {
     const frame = course.frame(item.s);
     return { item, frame, center:roadPoint(course,item.s,item.offset) };
@@ -101,7 +102,6 @@ export function createWorld(course, { staticMeshes = true } = {}) {
     pickupPositions: track?.pickupPositions || [],
     hazards: (course.hazards || []).map(finish),
     items: (course.items || []).map(finish),
-    panorama: assetURL("horizon-" + (panoramaFor[course.id] || "woodland")),
     environment: {
       ...environment,
       fogNear: 67, fogFar: 216,
@@ -109,6 +109,7 @@ export function createWorld(course, { staticMeshes = true } = {}) {
       skyBottom: parse("skyLow",environment.skyBottom),
       fog: parse("fog",environment.fog),
       ...worldLighting[course.id],
+      horizon: horizonFor(course.id),
     },
   };
 }
