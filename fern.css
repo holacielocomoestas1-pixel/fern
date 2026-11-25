@@ -802,13 +802,20 @@ html[lang="en"] #fern-academia-entry::before { content: "NEW"; }
   border-radius: 26px; box-shadow: var(--shadow);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
 }
+/* v5.0.1: glass como lo demás (orden de Kevin: el blanco se veía horrible).
+   Vidrio normal KITE sobre la tarjeta gruesa: tinte verdoso + reflejo
+   especular + filo de luz; texto claro y el logo G multicolor intacto.
+   El pulsado 0.96 lo gobierna la regla KITE (más abajo). */
 .login-google {
+  position: relative;
   width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 12px;
-  background: #fff; color: #1f1f1f; border: 0; border-radius: 14px;
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  -webkit-backdrop-filter: var(--glass-blur-normal); backdrop-filter: var(--glass-blur-normal);
+  box-shadow: var(--glass-glow);
+  color: var(--ink); border: 0; border-radius: 14px;
   font: 600 16px var(--font); cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
 }
-.login-google:active { transform: scale(.98); }
 .login-google:disabled { opacity: .7; }
 .login-google .g-logo { width: 20px; height: 20px; flex: 0 0 20px; }
 .login-or { display: flex; align-items: center; gap: 12px; margin: 14px 0; color: var(--mut); font-size: 13px; }
@@ -884,8 +891,8 @@ body.login-open { overflow: hidden; }
    botón primario. Solo donde el navegador lo soporta; si no, queda el
    borde sutil que ya tenían. */
 @supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
-  .tabs, .toast, .modal:not(dialog) > div, .sheet-modal > div, .login-card { border: 0; }
-  .tabs::before, .toast::before, .modal:not(dialog) > div::before, .sheet-modal > div::before, .login-card::before {
+  .tabs, .toast, .modal:not(dialog) > div, .sheet-modal > div, .login-card, .login-google { border: 0; }
+  .tabs::before, .toast::before, .modal:not(dialog) > div::before, .sheet-modal > div::before, .login-card::before, .login-google::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
     background: var(--glass-edge);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -1005,7 +1012,7 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
 
 /* --- Vidrio opaco: sin backdrop-filter o con reducir transparencia --- */
 @media (prefers-reduced-transparency: reduce) {
-  .tabs, .toast, .timerbar, .reader-head, .reader-actions {
+  .tabs, .toast, .timerbar, .reader-head, .reader-actions, .login-google {
     background-color: rgba(58, 58, 62, .97);
     background-image: linear-gradient(rgba(58, 58, 62, .97), rgba(44, 44, 48, .97));
     -webkit-backdrop-filter: none; backdrop-filter: none;
@@ -1017,7 +1024,7 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
   }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .tabs, .toast, .timerbar, .reader-head, .reader-actions {
+  .tabs, .toast, .timerbar, .reader-head, .reader-actions, .login-google {
     background-color: rgba(58, 58, 62, .97);
     background-image: linear-gradient(rgba(58, 58, 62, .97), rgba(44, 44, 48, .97));
     -webkit-backdrop-filter: none; backdrop-filter: none;
@@ -1036,7 +1043,7 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
   .xbtn:active, .plan-bar:active, .profile-avatar:active, .profile-edit:active, .sheet-close:active,
   #fern-academia-entry a:active { transform: none; }
   .spinner { animation: none; }
-  .tabs, .toast, .timerbar, .reader-head, .reader-actions, .modal:not(dialog) > div, .sheet-modal > div, .login-card {
+  .tabs, .toast, .timerbar, .reader-head, .reader-actions, .modal:not(dialog) > div, .sheet-modal > div, .login-card, .login-google {
     background-color: rgb(36, 36, 38); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none;
   }
 }
