@@ -236,3 +236,166 @@ progress::-moz-progress-bar { background: var(--mint); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+/* v5.0: sistema KITE — vidrio, botones, muelles y componentes.
+   Verde intacto (orden de Kevin): fondo #0c2119, acento #c9efb9. */
+:root {
+  --spring-entrar: cubic-bezier(.22, 1, .36, 1);
+  --spring-salir: cubic-bezier(.3, .9, .4, 1);
+  --spring-rebote: cubic-bezier(.34, 1.4, .64, 1);
+  --t-entrar: 340ms;
+  --t-salir: 220ms;
+  --t-rebote: 460ms;
+  --t-pulsar: 80ms;
+  --glass-spec: linear-gradient(rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, .02) 40%, rgba(255, 255, 255, 0) 60%);
+  --glass-edge: linear-gradient(165deg, rgba(255, 255, 255, .4) 0%, rgba(255, 255, 255, .1) 30%, rgba(255, 255, 255, .04) 62%, rgba(255, 255, 255, .14) 100%);
+  --glass-edge-strong: linear-gradient(165deg, rgba(255, 255, 255, .8) 0%, rgba(255, 255, 255, .25) 35%, rgba(255, 255, 255, .1) 65%, rgba(255, 255, 255, .4) 100%);
+  --glass-glow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -1px 0 rgba(255, 255, 255, .03), 0 0 0 .5px rgba(0, 0, 0, .16), 0 4px 16px rgba(0, 0, 0, .25);
+  --glass-blur-normal: blur(18px) saturate(180%);
+  --glass-blur-grueso: blur(20px) saturate(180%);
+}
+
+/* Vidrio normal: dock inferior y aviso flotante. */
+.nav, .notice:not(:empty) {
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  -webkit-backdrop-filter: var(--glass-blur-normal); backdrop-filter: var(--glass-blur-normal);
+  box-shadow: var(--glass-glow);
+}
+.nav { inset-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right)); }
+
+/* Vidrio grueso: diálogo de estudio. Velo negro 36% sin blur. */
+.study-dialog {
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  -webkit-backdrop-filter: var(--glass-blur-grueso); backdrop-filter: var(--glass-blur-grueso);
+  box-shadow: var(--glass-glow);
+  animation: kite-dialog-in var(--t-entrar) var(--spring-entrar);
+}
+.study-dialog::backdrop { background: rgba(0, 0, 0, .36); backdrop-filter: none; }
+@keyframes kite-dialog-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+
+/* Alerta KITE: la confirmación de entregar el simulacro (kind=mock). */
+.study-dialog[data-kind="mock"] {
+  width: min(320px, calc(100% - 28px));
+  border-radius: 32px; padding: 20px 16px 16px; text-align: center;
+  animation: kite-alert-in var(--t-rebote) var(--spring-rebote);
+}
+.study-dialog[data-kind="mock"] h2 { font-size: 17px; font-weight: 600; }
+.study-dialog[data-kind="mock"] .lead { font-size: 14px; line-height: 1.38; margin-top: 6px; }
+.study-dialog[data-kind="mock"] .inline-actions { margin-top: 16px; gap: 8px; flex-wrap: wrap-reverse; justify-content: center; }
+.study-dialog[data-kind="mock"] .act { flex: 1 1 auto; min-height: 46px; font-size: 17px; font-weight: 500; }
+.study-dialog[data-kind="mock"] .act.solid { font-weight: 600; }
+@keyframes kite-alert-in { from { opacity: 0; transform: scale(1.14); } }
+
+/* Filo de luz de 1px (máscara, no borde) en las piezas de vidrio y en el
+   botón primario. Solo donde el navegador lo soporta. */
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .nav, .notice:not(:empty), .study-dialog { border: 0; }
+  .nav::before, .notice:not(:empty)::before, .study-dialog::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: var(--glass-edge);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .act.solid:not(:disabled)::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: var(--glass-edge-strong);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Botones: prominent glass verde + base KITE + pulsado. */
+.act {
+  position: relative;
+  min-height: 50px; padding: 9px 28px; font-size: 17px; line-height: 22px;
+  transition: background-color 240ms var(--spring-entrar), opacity 240ms var(--spring-entrar), transform var(--t-rebote) var(--spring-rebote);
+}
+.solid {
+  background-color: var(--mint);
+  background-image: radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, .1) 45%, transparent 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -1px 2px rgba(0, 40, 70, .16), 0 0 0 .5px rgba(0, 0, 0, .16), 0 4px 16px rgba(0, 0, 0, .25);
+}
+.act:disabled, .solid:disabled {
+  opacity: 1; background-color: rgba(120, 120, 128, .24); background-image: none;
+  color: rgba(235, 235, 245, .3); box-shadow: none; border-color: transparent;
+}
+.ghost:active { background-image: linear-gradient(rgba(255, 255, 255, .1), rgba(255, 255, 255, .1)); }
+@media (hover: hover) {
+  .solid:hover { background-color: #dbf5d2; }
+}
+
+/* Pulsado KITE: hunde a 0.96 en 80ms, vuelve con rebote en 460ms.
+   Las filas de lista no se hunden: se iluminan. */
+.icon-button, .choice, .question-jump button, .nav a, .top-actions button, .top-actions a, .text-button {
+  transition: transform var(--t-rebote) var(--spring-rebote);
+}
+.act:active, .icon-button:active, .choice:active, .question-jump button:active, .nav a:active, .top-actions button:active, .top-actions a:active, .text-button:active {
+  transform: scale(.96);
+  transition-duration: var(--t-pulsar);
+  transition-timing-function: ease-out;
+}
+.row:active { background: var(--raised); }
+
+/* Estante de juegos: muelle rebote KITE; la tarjeta enfocada se hunde a 0.96. */
+.game-card-art { transition: transform var(--t-rebote) var(--spring-rebote), box-shadow var(--t-rebote) var(--spring-rebote), filter var(--t-rebote) var(--spring-rebote); }
+.game-card.on:active .game-card-art { transform: scale(.96); }
+.game-launch { transition: all var(--t-entrar) var(--spring-entrar); }
+.game-launch.out { transition: opacity var(--t-salir) ease; }
+.game-detail.on { animation: detail-in var(--t-entrar) var(--spring-entrar); }
+
+/* Campos: cursor verde y anillo de foco de 2px. */
+.field input, .field select { caret-color: var(--mint); }
+.field input:focus-visible, .field select:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--mint); }
+
+/* Segmentado KITE (componente listo; la píldora la posiciona JS). */
+.seg { display: inline-flex; position: relative; padding: 2px; height: 32px; background: rgba(120, 120, 128, .24); border-radius: 999px; }
+.seg .seg-pill { position: absolute; top: 2px; bottom: 2px; left: 0; background: #636366; border-radius: 999px; box-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 3px 1px rgba(0, 0, 0, .04); transition: transform 460ms var(--spring-entrar), width 460ms var(--spring-entrar); }
+.seg button { position: relative; z-index: 1; min-height: 28px; padding: 0 14px; border: 0; background: transparent; color: rgba(235, 235, 245, .6); font-size: 13px; font-weight: 500; border-radius: 999px; }
+.seg button[aria-pressed="true"] { color: #fff; font-weight: 600; }
+.seg button:active { transform: scale(.94); }
+
+/* Indicador de actividad estilo iOS: 8 varillas, pasos de 45°, 0,96s. */
+.spinner { --sp: 22px; width: var(--sp); height: var(--sp); position: relative; display: inline-block; animation: kite-spin .96s steps(8) infinite; color: var(--text); }
+.spinner i { position: absolute; left: 50%; top: 0; width: 2.5px; height: 32%; margin-left: -1.25px; border-radius: 2px; background: currentColor; opacity: calc(1 - var(--i, 0) * .11); transform-origin: 50% calc(var(--sp) / 2); transform: rotate(calc(var(--i, 0) * 45deg)); }
+@keyframes kite-spin { to { transform: rotate(360deg); } }
+
+/* Vidrio opaco: sin backdrop-filter o con reducir transparencia. */
+@media (prefers-reduced-transparency: reduce) {
+  .nav, .notice:not(:empty) {
+    background-color: rgba(58, 58, 62, .97);
+    background-image: linear-gradient(rgba(58, 58, 62, .97), rgba(44, 44, 48, .97));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .study-dialog {
+    background-color: rgb(36, 36, 38);
+    background-image: linear-gradient(rgb(36, 36, 38), rgb(28, 28, 30));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nav, .notice:not(:empty) {
+    background-color: rgba(58, 58, 62, .97);
+    background-image: linear-gradient(rgba(58, 58, 62, .97), rgba(44, 44, 48, .97));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .study-dialog {
+    background-color: rgb(36, 36, 38);
+    background-image: linear-gradient(rgb(36, 36, 38), rgb(28, 28, 30));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .act:active, .icon-button:active, .choice:active, .question-jump button:active, .nav a:active, .top-actions button:active, .top-actions a:active, .text-button:active { transform: none; }
+  .spinner { animation: none; }
+  .nav, .notice:not(:empty), .study-dialog {
+    background-color: rgb(36, 36, 38); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}

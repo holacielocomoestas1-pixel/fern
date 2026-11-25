@@ -839,3 +839,204 @@ body.login-open { overflow: hidden; }
   .login-tag { margin-bottom: 16px; }
   .login-skip { margin-top: 14px; }
 }
+
+/* v5.0: sistema KITE — vidrio, botones, muelles y componentes.
+   La paleta verde NO cambia (orden de Kevin): fondo #0c241c, acento
+   #c9efb9 y colores por materia intactos; la mascota no se toca.
+   De KITE se aplica el sistema de vidrio (3 grosores), los botones
+   prominent glass adaptados al verde, los muelles iOS, las hojas con
+   arrastre, las alertas, el segmentado y el spinner. */
+:root {
+  --spring-entrar: cubic-bezier(.22, 1, .36, 1);
+  --spring-salir: cubic-bezier(.3, .9, .4, 1);
+  --spring-rebote: cubic-bezier(.34, 1.4, .64, 1);
+  --t-entrar: 340ms;
+  --t-salir: 220ms;
+  --t-rebote: 460ms;
+  --t-pulsar: 80ms;
+  --glass-spec: linear-gradient(rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, .02) 40%, rgba(255, 255, 255, 0) 60%);
+  --glass-edge: linear-gradient(165deg, rgba(255, 255, 255, .4) 0%, rgba(255, 255, 255, .1) 30%, rgba(255, 255, 255, .04) 62%, rgba(255, 255, 255, .14) 100%);
+  --glass-edge-strong: linear-gradient(165deg, rgba(255, 255, 255, .8) 0%, rgba(255, 255, 255, .25) 35%, rgba(255, 255, 255, .1) 65%, rgba(255, 255, 255, .4) 100%);
+  --glass-glow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -1px 0 rgba(255, 255, 255, .03), 0 0 0 .5px rgba(0, 0, 0, .16), 0 4px 16px rgba(0, 0, 0, .25);
+  --glass-blur-normal: blur(18px) saturate(180%);
+  --glass-blur-grueso: blur(20px) saturate(180%);
+}
+
+/* --- Vidrio normal: dock, toast, barra de temporizador, cromo del lector --- */
+.tabs, .toast, .timerbar, .reader-head, .reader-actions {
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  -webkit-backdrop-filter: var(--glass-blur-normal); backdrop-filter: var(--glass-blur-normal);
+  box-shadow: var(--glass-glow);
+}
+.tabs { inset-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right)); }
+
+/* --- Vidrio grueso: modal centrado, hoja, tarjeta de login --- */
+.modal:not(dialog) > div, .sheet-modal > div, .login-card {
+  position: relative;
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  -webkit-backdrop-filter: var(--glass-blur-grueso); backdrop-filter: var(--glass-blur-grueso);
+  box-shadow: var(--glass-glow);
+}
+
+/* Filo de luz de 1px (máscara, no borde) en las piezas de vidrio y en el
+   botón primario. Solo donde el navegador lo soporta; si no, queda el
+   borde sutil que ya tenían. */
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .tabs, .toast, .modal:not(dialog) > div, .sheet-modal > div, .login-card { border: 0; }
+  .tabs::before, .toast::before, .modal:not(dialog) > div::before, .sheet-modal > div::before, .login-card::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: var(--glass-edge);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .btn:not(.blue):not(.red):not(.ghost):not(.secondary):not(.yellow)::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: var(--glass-edge-strong);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .btn:not(.blue):not(.red):not(.ghost):not(.secondary):not(.yellow):disabled::before { display: none; }
+}
+
+/* --- Botón primario: prominent glass adaptado al verde de Fern --- */
+.btn {
+  position: relative;
+  min-height: 50px; padding: 9px 28px; font-size: 17px; line-height: 22px;
+  background-color: var(--green);
+  background-image: radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, .1) 45%, transparent 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -1px 2px rgba(0, 40, 70, .16), 0 0 0 .5px rgba(0, 0, 0, .16), 0 4px 16px rgba(0, 0, 0, .25);
+  transition: background-color 240ms var(--spring-entrar), opacity 240ms var(--spring-entrar), transform var(--t-rebote) var(--spring-rebote);
+}
+.btn:hover { background-color: #dcf6cf; }
+.btn:disabled {
+  opacity: 1; background-color: rgba(120, 120, 128, .24); background-image: none;
+  color: rgba(235, 235, 245, .3); box-shadow: none; border-color: transparent;
+}
+.btn.ghost:active, .btn.secondary:active, .btn.yellow:active {
+  background-image: linear-gradient(rgba(255, 255, 255, .1), rgba(255, 255, 255, .1));
+}
+
+/* --- Pulsado KITE en todos los botones: hunde a 0.96 en 80ms, vuelve
+   con rebote en 460ms. Las filas de lista agrupada no se hunden: se
+   iluminan (regla KITE para filas). --- */
+.chip, .lesson-row, .subject-row, .utility-row, .opt, .matchbtn, .fc,
+.avatar-opt, .login-google, .login-email-toggle, .tabs button, .langtog button,
+.text-action, .xbtn, .plan-bar, .profile-avatar, .profile-edit, .sheet-close,
+#fern-academia-entry a {
+  transition: transform var(--t-rebote) var(--spring-rebote);
+}
+.btn:active, .chip:active, .lesson-row:active, .subject-row:active, .utility-row:active,
+.opt:active:not(:disabled), .matchbtn:active, .fc:active, .avatar-opt:active,
+.login-google:active, .login-email-toggle:active, .tabs button:active, .langtog button:active,
+.text-action:active, .xbtn:active, .plan-bar:active, .profile-avatar:active, .profile-edit:active,
+.sheet-close:active, #fern-academia-entry a:active {
+  transform: scale(.96);
+  transition-duration: var(--t-pulsar);
+  transition-timing-function: ease-out;
+}
+.home-row:active { background: var(--soft); }
+
+/* --- Muelles KITE en las transiciones que ya existían --- */
+summary::after { transition: transform var(--t-entrar) var(--spring-entrar); }
+.bar i { transition: width 240ms var(--spring-entrar); }
+#splash { transition: opacity var(--t-entrar) var(--spring-entrar); }
+#login-screen { transition: opacity var(--t-entrar) var(--spring-entrar); }
+.login-inner { transition: transform var(--t-entrar) var(--spring-entrar); }
+
+/* --- Hoja inferior KITE: flota a 8px, radio 34, velo negro 36% sin blur,
+   entrada desde abajo, salida en 220ms, arrastre para cerrar (JS) --- */
+.modal.sheet-modal { padding: 8px; background: rgba(0, 0, 0, .36); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sheet-modal > div {
+  max-width: 640px; border-radius: 34px; border-bottom: 1px solid var(--glass-border);
+  animation: kite-sheet-in 460ms var(--spring-entrar);
+}
+.sheet-modal.closing > div { animation: kite-sheet-out var(--t-salir) var(--spring-salir) both; }
+.sheet-modal > div.dragging { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sheet-modal > div.sheet-return { transition: transform var(--t-entrar) var(--spring-entrar); }
+.sheet-handle { background: rgba(255, 255, 255, .3); height: 5px; }
+.sheet-handle, .sheet h2 { touch-action: none; -webkit-user-select: none; user-select: none; }
+.sheet-close {
+  position: absolute; top: 12px; right: 12px; width: 44px; height: 44px;
+  display: grid; place-items: center; border: 0; background: transparent; color: var(--ink); padding: 0;
+}
+.sheet-close::before {
+  content: "✕"; width: 34px; height: 34px; display: grid; place-items: center;
+  background: rgba(120, 120, 128, .24); border-radius: 50%;
+  font-size: 15px; font-weight: 700; line-height: 1;
+}
+@keyframes kite-sheet-in { from { transform: translateY(calc(100% + 40px)); } }
+@keyframes kite-sheet-out { to { transform: translateY(calc(100% + 40px)); } }
+
+/* --- Alerta KITE: el modal centrado (celebración) usa velo negro 40%
+   sin blur y la tarjeta entra con rebote desde escala 1.14 --- */
+.modal:not(dialog) { background: rgba(0, 0, 0, .4); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.modal:not(dialog) > div { border-radius: 32px; animation: kite-alert-in var(--t-rebote) var(--spring-rebote); }
+@keyframes kite-alert-in { from { opacity: 0; transform: scale(1.14); } }
+@keyframes kite-fade-in { from { opacity: 0; } }
+
+/* --- Toast: entra desde +6px con rebote (como la cápsula HUD de KITE) --- */
+.toast { animation: kite-toast-in var(--t-rebote) var(--spring-rebote); }
+@keyframes kite-toast-in { from { opacity: 0; transform: translate(-50%, 6px) scale(.97); } }
+
+/* --- Campos: cursor verde y anillo de foco de 2px --- */
+input.blank, .auth-field input, .login-email-form input, .acct-email-row input { caret-color: var(--green); }
+input.blank:focus, .auth-field input:focus, .login-email-form input:focus { box-shadow: 0 0 0 2px var(--green); }
+input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form input:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--green); }
+
+/* --- Segmentado KITE (componente listo; la píldora la posiciona JS) --- */
+.seg { display: inline-flex; position: relative; padding: 2px; height: 32px; background: rgba(120, 120, 128, .24); border-radius: 999px; }
+.seg .seg-pill { position: absolute; top: 2px; bottom: 2px; left: 0; background: #636366; border-radius: 999px; box-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 3px 1px rgba(0, 0, 0, .04); transition: transform 460ms var(--spring-entrar), width 460ms var(--spring-entrar); }
+.seg button { position: relative; z-index: 1; min-height: 28px; padding: 0 14px; border: 0; background: transparent; color: rgba(235, 235, 245, .6); font-size: 13px; font-weight: 500; border-radius: 999px; }
+.seg button[aria-pressed="true"] { color: #fff; font-weight: 600; }
+.seg button:active { transform: scale(.94); }
+
+/* --- Indicador de actividad estilo iOS: 8 varillas, pasos de 45°, 0,96s --- */
+.spinner { --sp: 22px; width: var(--sp); height: var(--sp); position: relative; display: inline-block; animation: kite-spin .96s steps(8) infinite; color: var(--ink); }
+.spinner i { position: absolute; left: 50%; top: 0; width: 2.5px; height: 32%; margin-left: -1.25px; border-radius: 2px; background: currentColor; opacity: calc(1 - var(--i, 0) * .11); transform-origin: 50% calc(var(--sp) / 2); transform: rotate(calc(var(--i, 0) * 45deg)); }
+@keyframes kite-spin { to { transform: rotate(360deg); } }
+
+/* --- Vidrio opaco: sin backdrop-filter o con reducir transparencia --- */
+@media (prefers-reduced-transparency: reduce) {
+  .tabs, .toast, .timerbar, .reader-head, .reader-actions {
+    background-color: rgba(58, 58, 62, .97);
+    background-image: linear-gradient(rgba(58, 58, 62, .97), rgba(44, 44, 48, .97));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .modal:not(dialog) > div, .sheet-modal > div, .login-card {
+    background-color: rgb(36, 36, 38);
+    background-image: linear-gradient(rgb(36, 36, 38), rgb(28, 28, 30));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabs, .toast, .timerbar, .reader-head, .reader-actions {
+    background-color: rgba(58, 58, 62, .97);
+    background-image: linear-gradient(rgba(58, 58, 62, .97), rgba(44, 44, 48, .97));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .modal:not(dialog) > div, .sheet-modal > div, .login-card {
+    background-color: rgb(36, 36, 38);
+    background-image: linear-gradient(rgb(36, 36, 38), rgb(28, 28, 30));
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .btn:active, .chip:active, .lesson-row:active, .subject-row:active, .utility-row:active,
+  .opt:active, .matchbtn:active, .fc:active, .avatar-opt:active, .login-google:active,
+  .login-email-toggle:active, .tabs button:active, .langtog button:active, .text-action:active,
+  .xbtn:active, .plan-bar:active, .profile-avatar:active, .profile-edit:active, .sheet-close:active,
+  #fern-academia-entry a:active { transform: none; }
+  .spinner { animation: none; }
+  .tabs, .toast, .timerbar, .reader-head, .reader-actions, .modal:not(dialog) > div, .sheet-modal > div, .login-card {
+    background-color: rgb(36, 36, 38); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}

@@ -865,11 +865,72 @@ function renderProfile() {
   }
 }
 
+/* v5.0 KITE: cierre animado (220ms) y arrastre para cerrar de las hojas.
+   Cierra si el arrastre supera 160px, el 30% de la altura, o es un
+   flick (>0.55px/ms con ≥24px); si no, vuelve con muelle entrar. */
+const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function closeSheetAnimated(dialog) {
+  if (dialog.dataset.closing) return;
+  if (reduceMotion) { dialog.close(); return; }
+  dialog.dataset.closing = '1';
+  dialog.classList.add('closing');
+  setTimeout(() => dialog.close(), 220);
+}
+function wireSheetDrag(dialog) {
+  const sheet = dialog.querySelector('.sheet');
+  if (!sheet) return;
+  dialog.querySelector('.sheet-close')?.addEventListener('click', () => closeSheetAnimated(dialog));
+  let startY = 0, dy = 0, dragging = false, lastY = 0, lastT = 0, vel = 0;
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.classList.remove('dragging');
+    const h = sheet.offsetHeight || 1;
+    if (dy > 160 || dy > h * 0.3 || (vel > 0.55 && dy >= 24)) {
+      dialog.dataset.closing = '1';
+      sheet.style.transition = 'transform 220ms cubic-bezier(.3,.9,.4,1)';
+      sheet.style.transform = 'translateY(calc(100% + 40px))';
+      dialog.style.background = 'rgba(0,0,0,0)';
+      setTimeout(() => dialog.close(), 220);
+    } else if (dy > 0) {
+      sheet.classList.add('sheet-return');
+      sheet.style.transform = '';
+      dialog.style.background = '';
+      setTimeout(() => sheet.classList.remove('sheet-return'), 340);
+    }
+  };
+  for (const grip of dialog.querySelectorAll('.sheet-handle, .sheet h2')) {
+    grip.addEventListener('pointerdown', e => {
+      if (dialog.dataset.closing) return;
+      dragging = true; dy = 0; vel = 0;
+      startY = e.clientY; lastY = e.clientY; lastT = performance.now();
+      sheet.style.animation = 'none';
+      try { grip.setPointerCapture(e.pointerId); } catch (_) { /* noop */ }
+    });
+    grip.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const now = performance.now();
+      const dt = Math.max(1, now - lastT);
+      vel = vel * .2 + ((e.clientY - lastY) / dt) * .8;
+      lastY = e.clientY; lastT = now;
+      dy = Math.max(0, e.clientY - startY);
+      if (dy < 4) return;
+      sheet.classList.add('dragging');
+      sheet.style.transform = 'translateY(' + dy + 'px)';
+      const h = sheet.offsetHeight || 1;
+      dialog.style.background = 'rgba(0,0,0,' + (0.36 * (1 - Math.min(1, dy / h) * 0.85)).toFixed(3) + ')';
+    });
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
+  }
+}
+
 function openEditName() {
   const root = document.getElementById('modal-root');
   root.innerHTML = `<dialog class="modal sheet-modal" aria-labelledby="sheet-name-title">
     <div class="sheet">
       <span class="sheet-handle" aria-hidden="true"></span>
+      <button type="button" class="sheet-close" aria-label="${t('cancelBtn')}"></button>
       <h2 id="sheet-name-title">${t('editNameTitle')}</h2>
       <label class="auth-field"><span>${t('editNameTitle')}</span>
         <input id="name-in" type="text" maxlength="24" value="${esc(profileName())}" placeholder="${t('yourNamePh')}" autocomplete="off"></label>
@@ -880,18 +941,19 @@ function openEditName() {
   const dialog = root.querySelector('dialog');
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
   dialog.showModal();
+  wireSheetDrag(dialog);
   const input = document.getElementById('name-in');
   input.focus();
   input.select();
   const save = () => {
     LS.set('profile-name', input.value.trim() || 'Fern');
-    dialog.close();
+    closeSheetAnimated(dialog);
     renderProfile();
   };
   document.getElementById('name-save').onclick = save;
-  document.getElementById('name-cancel').onclick = () => dialog.close();
+  document.getElementById('name-cancel').onclick = () => closeSheetAnimated(dialog);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
-  dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener('click', e => { if (e.target === dialog) closeSheetAnimated(dialog); });
 }
 
 const AVATAR_POSES = ['avatar', 'welcome', 'home', 'practice', 'guide', 'goal', 'streak', 'complete'];
@@ -902,6 +964,7 @@ function openAvatarPick() {
   root.innerHTML = `<dialog class="modal sheet-modal" aria-labelledby="sheet-avatar-title">
     <div class="sheet">
       <span class="sheet-handle" aria-hidden="true"></span>
+      <button type="button" class="sheet-close" aria-label="${t('cancelBtn')}"></button>
       <h2 id="sheet-avatar-title">${t('pickAvatar')}</h2>
       <div class="avatar-grid">${AVATAR_POSES.map(id =>
         `<button type="button" class="avatar-opt${id === current ? ' on' : ''}" data-pose="${id}" aria-pressed="${id === current}">${mascotPose(id, 64)}</button>`).join('')}
@@ -912,15 +975,16 @@ function openAvatarPick() {
   const dialog = root.querySelector('dialog');
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
   dialog.showModal();
+  wireSheetDrag(dialog);
   for (const opt of dialog.querySelectorAll('[data-pose]')) {
     opt.onclick = () => {
       LS.set('profile-avatar', opt.dataset.pose);
-      dialog.close();
+      closeSheetAnimated(dialog);
       renderProfile();
     };
   }
-  document.getElementById('avatar-cancel').onclick = () => dialog.close();
-  dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+  document.getElementById('avatar-cancel').onclick = () => closeSheetAnimated(dialog);
+  dialog.addEventListener('click', e => { if (e.target === dialog) closeSheetAnimated(dialog); });
 }
 
 function organizePlan(content) {
