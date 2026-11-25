@@ -399,3 +399,84 @@ progress::-moz-progress-bar { background: var(--mint); }
     background-color: rgb(36, 36, 38); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none;
   }
 }
+
+/* v5.1: glass KITE en todas las páginas internas de Academy (orden de
+   Kevin: que se vean como el login o mejor). Mismo sistema que la app
+   principal: tinte verdoso + reflejo especular + filo de luz + brillo
+   interior y sombra única. SIN backdrop-filter en tarjetas sobre fondo
+   plano; el blur queda solo en lo que flota (nav, aviso, diálogo). */
+
+/* --- Tarjetas de contenido: vidrio completo (tinte + especular + brillo) --- */
+.list, .kpis, .study-card, .game-detail, .choice, .feedback, .icon-button {
+  position: relative;
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  box-shadow: var(--glass-glow);
+}
+.act.ghost {
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  box-shadow: var(--glass-glow);
+}
+
+/* --- Piezas pequeñas y campos: solo especular (sin sombra apilada) --- */
+.row-icon, .tag, .field input, .field select, .question-jump button {
+  background-image: var(--glass-spec);
+}
+
+/* --- Radios KITE: 24px tarjetas agrupadas, 18px tarjetas sueltas, 12px campos --- */
+.list, .kpis, .study-card, .game-detail { border-radius: 24px; }
+.choice, .feedback { border-radius: 18px; }
+.field input, .field select { border-radius: 12px; }
+
+/* --- Filo de luz de 1px (máscara, no borde) en las tarjetas de vidrio.
+   Solo donde el navegador lo soporta; si no, queda el borde sutil.
+   Las piezas con bordes de estado o de color (opción marcada, acierto,
+   borde izquierdo del feedback, hover del ghost, pulsado del icono)
+   conservan su borde: solo ganan el filo. --- */
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .list, .kpis, .study-card, .game-detail { border: 0; }
+  .list::before, .kpis::before, .study-card::before, .game-detail::before,
+  .choice::before, .feedback::before, .act.ghost::before, .icon-button::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: var(--glass-edge);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* --- Vidrio opaco para los elementos v5.1: sin backdrop-filter o con
+   reducir transparencia / reducir movimiento. El opaco es el propio tinte
+   verdoso a opacidad completa, no gris. --- */
+@media (prefers-reduced-transparency: reduce) {
+  .list, .kpis, .study-card, .game-detail, .choice, .feedback,
+  .act.ghost, .icon-button {
+    background-color: rgb(12, 33, 25);
+    background-image: linear-gradient(rgb(12, 33, 25), rgb(10, 27, 21));
+  }
+  .row-icon, .tag, .field input, .field select, .question-jump button {
+    background-image: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .list, .kpis, .study-card, .game-detail, .choice, .feedback,
+  .act.ghost, .icon-button {
+    background-color: rgb(12, 33, 25);
+    background-image: linear-gradient(rgb(12, 33, 25), rgb(10, 27, 21));
+  }
+  .row-icon, .tag, .field input, .field select, .question-jump button {
+    background-image: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .list, .kpis, .study-card, .game-detail, .choice, .feedback,
+  .act.ghost, .icon-button {
+    background-color: rgb(12, 33, 25); background-image: none;
+  }
+  .row-icon, .tag, .field input, .field select, .question-jump button {
+    background-image: none;
+  }
+}

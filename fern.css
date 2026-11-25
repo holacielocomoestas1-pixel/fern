@@ -1047,3 +1047,125 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
     background-color: rgb(36, 36, 38); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none;
   }
 }
+
+/* v5.1: glass KITE en todas las páginas internas (orden de Kevin: que se
+   vean como el login o mejor). Las tarjetas de contenido suben de cristal
+   v4.0 a vidrio KITE: tinte verdoso + reflejo especular + filo de luz +
+   brillo interior y sombra única. SIN backdrop-filter en tarjetas sobre
+   fondo plano (el blur no se vería y costaría rendimiento en listas
+   largas); el blur queda solo en lo que flota, como en v5.0. Verde y
+   mascota intactos. */
+
+/* --- Tarjetas de contenido: vidrio completo (tinte + especular + brillo) --- */
+.home-actions, .path details, .native-list details, .learn-progress,
+.card, .guide-sec, .plain-details, .menu-group, .stat-cell,
+.subject-row, .utility-row, .opt, .matchbtn, .fc, .feedback, .chip,
+.avatar-opt, input.blank {
+  position: relative;
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  box-shadow: var(--glass-glow);
+}
+.btn.ghost, .btn.secondary, .btn.yellow {
+  position: relative;
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  box-shadow: var(--glass-glow);
+}
+
+/* --- Tarjetas con identidad verde propia: conservan su tinte y borde
+   verdes; solo ganan especular + brillo + radio --- */
+.plan-bar, #fern-academia-entry a {
+  background-image: var(--glass-spec);
+  box-shadow: var(--glass-glow);
+  border-radius: 24px;
+}
+
+/* --- Botones sólidos de color: solo especular (conservan su color) --- */
+.btn.blue, .btn.red { background-image: var(--glass-spec); }
+
+/* --- Filas con fondo propio, baldosas y campos: solo especular (sin
+   sombra apilada dentro de tarjetas ni filo en piezas pequeñas) --- */
+.lesson-row, .plan-step, .week-list li,
+.subj-ic, .util-ic, .util-ic.daily, .util-ic.mistakes, .util-ic.extra, .util-ic.mock,
+.menu-ic, .plan-bar__icon, .score-pill, .week-tag,
+.acct-email-row input, .auth-field input {
+  background-image: var(--glass-spec);
+}
+
+/* --- Radios KITE: 24px tarjetas agrupadas, 18px tarjetas sueltas --- */
+.home-actions, .path details, .native-list details, .learn-progress,
+.card, .guide-sec, .plain-details, .menu-group { border-radius: 24px; }
+.subject-row, .utility-row, .opt, .feedback { border-radius: 18px; }
+
+/* --- Filo de luz de 1px (máscara, no borde) en las tarjetas de vidrio.
+   Solo donde el navegador lo soporta; si no, queda el borde sutil.
+   Las piezas con bordes de estado o de color (borde superior de materia,
+   seleccionado/correcto/incorrecto) conservan su borde: solo ganan el filo.
+   Sin filo en .lesson-row (su ::before es el icono) ni en las entradas
+   Academy (usan ::before y ::after) ni en campos (sin ::before). --- */
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .home-actions, .learn-progress, .card, .guide-sec, .plain-details, .menu-group,
+  .stat-cell, .utility-row, .fc, .feedback, .chip,
+  .btn.ghost, .btn.secondary, .btn.yellow { border: 0; }
+  .home-actions::before, .path details::before, .native-list details::before,
+  .learn-progress::before, .card::before, .guide-sec::before, .plain-details::before,
+  .menu-group::before, .stat-cell::before, .subject-row::before, .utility-row::before,
+  .opt::before, .matchbtn::before, .fc::before, .feedback::before, .chip::before,
+  .avatar-opt::before, .btn.ghost::before, .btn.secondary::before, .btn.yellow::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: var(--glass-edge);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  /* La tarjeta anidada dentro de un details no lleva su propio filo. */
+  .plain-details .card::before { display: none; }
+}
+
+/* --- Vidrio opaco para los elementos v5.1: sin backdrop-filter o con
+   reducir transparencia / reducir movimiento. El opaco es el propio tinte
+   verdoso a opacidad completa, no gris. --- */
+@media (prefers-reduced-transparency: reduce) {
+  .home-actions, .path details, .native-list details, .learn-progress,
+  .card, .guide-sec, .plain-details, .menu-group, .stat-cell,
+  .subject-row, .utility-row, .opt, .matchbtn, .fc, .feedback, .chip,
+  .avatar-opt, input.blank, .btn.ghost, .btn.secondary, .btn.yellow {
+    background-color: rgb(20, 40, 30);
+    background-image: linear-gradient(rgb(20, 40, 30), rgb(16, 32, 24));
+  }
+  .lesson-row, .plan-step, .week-list li, .subj-ic, .util-ic,
+  .util-ic.daily, .util-ic.mistakes, .util-ic.extra, .util-ic.mock,
+  .menu-ic, .plan-bar__icon, .score-pill, .week-tag,
+  .acct-email-row input, .auth-field input, .btn.blue, .btn.red,
+  .plan-bar, #fern-academia-entry a { background-image: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .home-actions, .path details, .native-list details, .learn-progress,
+  .card, .guide-sec, .plain-details, .menu-group, .stat-cell,
+  .subject-row, .utility-row, .opt, .matchbtn, .fc, .feedback, .chip,
+  .avatar-opt, input.blank, .btn.ghost, .btn.secondary, .btn.yellow {
+    background-color: rgb(20, 40, 30);
+    background-image: linear-gradient(rgb(20, 40, 30), rgb(16, 32, 24));
+  }
+  .lesson-row, .plan-step, .week-list li, .subj-ic, .util-ic,
+  .util-ic.daily, .util-ic.mistakes, .util-ic.extra, .util-ic.mock,
+  .menu-ic, .plan-bar__icon, .score-pill, .week-tag,
+  .acct-email-row input, .auth-field input, .btn.blue, .btn.red,
+  .plan-bar, #fern-academia-entry a { background-image: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-actions, .path details, .native-list details, .learn-progress,
+  .card, .guide-sec, .plain-details, .menu-group, .stat-cell,
+  .subject-row, .utility-row, .opt, .matchbtn, .fc, .feedback, .chip,
+  .avatar-opt, input.blank, .btn.ghost, .btn.secondary, .btn.yellow {
+    background-color: rgb(20, 40, 30); background-image: none;
+  }
+  .lesson-row, .plan-step, .week-list li, .subj-ic, .util-ic,
+  .util-ic.daily, .util-ic.mistakes, .util-ic.extra, .util-ic.mock,
+  .menu-ic, .plan-bar__icon, .score-pill, .week-tag,
+  .acct-email-row input, .auth-field input, .btn.blue, .btn.red,
+  .plan-bar, #fern-academia-entry a { background-image: none; }
+}
