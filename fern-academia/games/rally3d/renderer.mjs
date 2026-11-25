@@ -1,0 +1,645 @@
+import { clamp, transform, unit, viewFor, wheelTransform } from "./render-math.mjs";
+import {
+  effectFragment, effectVertex, foliageFragment, foliageVertex, meshFragment, meshVertex, screenVertex, skyFragment, streakFragment,
+} from "./render-shaders.mjs";
+import { assetURL, forVisibleFixtures } from "./world.mjs";
+import { fixtures, fixtureMesh } from "./world-fixtures.mjs";
+import { createGLPilots } from "./pilot.mjs";
+
+const TAU = Math.PI * 2;
+const WHITE = [1, 1, 1];
+const SHADOW = [0.013, 0.032, 0.031];
+const TURBO = [0.22, 0.83, 1];
+const SPARK = [1, 0.58, 0.15];
+const CREAM = [1, .88, .54];
+const DUST = [0.58, 0.45, 0.35];
+const LAND = {
+  skyTop: [0.19, 0.49, 0.68],
+  skyBottom: [0.67, 0.78, 0.70],
+  fog: [0.57, 0.70, 0.63],
+  sun: [1.0, 0.88, 0.68],
+  sunDirection: [0.30, 0.49, -0.68],
+  fogNear: 42, fogFar: 210, ambient: 0.69, clouds: .46, stars: 0,
+};
+
+function makeProgram(gl, vs, fs, attrs, names) {
+  function compile(kind, source) {
+    const shader = gl.createShader(kind);
+    if (!shader) throw new Error("Fern Rally could not allocate a shader.");
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
+    const message = gl.getShaderInfoLog(shader);
+    gl.deleteShader(shader);
+    throw new Error(message || "Fern Rally could not compile a shader.");
+  }
+  const vertex = compile(gl.VERTEX_SHADER, vs);
+  let fragment;
+  let program;
+  try {
+    fragment = compile(gl.FRAGMENT_SHADER, fs);
+    program = gl.createProgram();
+    if (!program) throw new Error("Fern Rally could not allocate a program.");
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    attrs.forEach((name, index) => gl.bindAttribLocation(program, index, name));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program) || "Fern Rally could not link a program.");
+    }
+    return { handle: program, u: Object.fromEntries(names.map(name => [name, gl.getUniformLocation(program, name)])) };
+  } catch (error) {
+    if (program) gl.deleteProgram(program);
+    throw error;
+  } finally {
+    gl.deleteShader(vertex);
+    if (fragment) gl.deleteShader(fragment);
+  }
+}
+
+function crystalMesh() {
+  const points = [[0, .56, 0], [0, -.43, 0], [.30, 0, 0], [0, 0, .30], [-.30, 0, 0], [0, 0, -.30]];
+  const positions = [], normals = [], colors = [];
+  const shades = [[.61, .98, .81], [.33, .82, .58], [.86, 1, .58], [.50, .89, .68]];
+  for (let i = 0; i < 4; i++) {
+    const a = points[2 + i];
+    const b = points[2 + (i + 1) % 4];
+    for (const tip of [points[0], points[1]]) {
+      const normal = unit(a[0] + b[0], tip[1] * .65, a[2] + b[2]);
+      for (const point of [tip, a, b]) {
+        positions.push(...point);
+        normals.push(...normal);
+        colors.push(...shades[i]);
+      }
+    }
+  }
+  return { positions, normals, colors, emissive: .52, roughness: .18 };
+}
+
+function batch(maxQuads) {
+  return { data: new Float32Array(maxQuads * 54), count: 0 };
+}
+
+function splat(writer, x, y, z, ax, ay, az, bx, by, bz, color, alpha) {
+  const data = writer.data;
+  let i = writer.count;
+  if (i + 54 > data.length || alpha <= 0) return;
+  const add = (u, v) => {
+    data[i++] = x + u * ax + v * bx;
+    data[i++] = y + u * ay + v * by;
+    data[i++] = z + u * az + v * bz;
+    data[i++] = u;
+    data[i++] = v;
+    data[i++] = color[0];
+    data[i++] = color[1];
+    data[i++] = color[2];
+    data[i++] = alpha;
+  };
+  add(-1, -1); add(1, -1); add(-1, 1);
+  add(-1, 1); add(1, -1); add(1, 1);
+  writer.count = i;
+}
+
+export function createRenderer(canvas, { quality = "auto", reducedMotion = false } = {}) {
+  const options = {
+    alpha: false, antialias: quality !== "low", depth: true, stencil: false,
+    preserveDrawingBuffer: false, powerPreference: "high-performance",
+  };
+  const gl = canvas.getContext("webgl", options) || canvas.getContext("experimental-webgl", options);
+  if (!gl) throw new Error("WebGL is unavailable.");
+  const programs = [];
+  const buffers = new Set();
+  const textures = new Map();
+  const props = ["pine","blossom","palm","crag"];
+  const sceneryFloats = new Float32Array(36 * 220);
+  const powers = Object.create(null);
+  let whiteTexture, panorama, pilots;
+  const array = gl.ARRAY_BUFFER;
+  let worldMeshes = [];
+  let world = null;
+  let models = [];
+  let env = LAND;
+  let sunDirection = unit(...LAND.sunDirection);
+  let disposed = false;
+  let timeBefore = null;
+  const spins = new Map();
+  const eye = new Float32Array(3);
+  const bodyMatrix = new Float32Array(16);
+  const modelMatrix = new Float32Array(16);
+  const wheelMatrix = new Float32Array(16);
+  const identity = transform(new Float32Array(16), 0, 0, 0);
+  const maxSize = Math.min(4096, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096);
+  const stats = { width: canvas.width, height: canvas.height, drawCalls: 0, triangles: 0, frameMs: 0, contextLost: false };
+  const effectsBatch = batch(196);
+  let drawable = true;
+
+  function addProgram(vs, fs, attrs, names) {
+    const program = makeProgram(gl, vs, fs, attrs, names);
+    programs.push(program);
+    return program;
+  }
+
+  function allocate(data, hint = gl.STATIC_DRAW) {
+    const buffer = gl.createBuffer();
+    if (!buffer) throw new Error("Fern Rally could not allocate a graphics buffer.");
+    buffers.add(buffer);
+    gl.bindBuffer(array, buffer);
+    gl.bufferData(array, data, hint);
+    return buffer;
+  }
+
+  function release(buffer) {
+    if (!buffers.delete(buffer)) return;
+    gl.deleteBuffer(buffer);
+  }
+
+  function upload(mesh) {
+    const { positions, normals, colors, indices } = mesh;
+    if (!positions || positions.length % 3 || positions.length < 9) throw new Error("Malformed Fern Rally mesh.");
+    const sourceCount = positions.length / 3;
+    const count = indices?.length ?? sourceCount;
+    if (count % 3 || !count) throw new Error("Fern Rally meshes contain triangles.");
+    const interleaved = new Float32Array(count * 9);
+    for (let i = 0; i < count; i++) {
+      const source = (indices ? indices[i] : i) * 3;
+      if (source < 0 || source >= positions.length) throw new Error("Fern Rally mesh index out of bounds.");
+      const dest = i * 9;
+      interleaved[dest] = positions[source];
+      interleaved[dest + 1] = positions[source + 1];
+      interleaved[dest + 2] = positions[source + 2];
+      interleaved[dest + 3] = normals ? normals[source] : 0;
+      interleaved[dest + 4] = normals ? normals[source + 1] : 1;
+      interleaved[dest + 5] = normals ? normals[source + 2] : 0;
+      interleaved[dest + 6] = colors ? colors[source] : WHITE[0];
+      interleaved[dest + 7] = colors ? colors[source + 1] : WHITE[1];
+      interleaved[dest + 8] = colors ? colors[source + 2] : WHITE[2];
+    }
+    return {
+      buffer: allocate(interleaved), count, bounds: mesh.bounds,
+      emissive: clamp(mesh.emissive || 0, 0, 1),
+      roughness: clamp(mesh.roughness ?? .71, 0, 1),
+      surface: mesh.water || mesh.surface === "water" ? 2 : mesh.surface === "road" ? 1 : mesh.surface === "land" ? 3 : 0,
+    };
+  }
+
+  const retire = loaded => loaded.forEach(mesh => release(mesh.buffer));
+
+  function texture(url) {
+    if (typeof Image === "undefined" || !url) return null;
+    if (textures.has(url)) return textures.get(url);
+    const handle=gl.createTexture();
+    if (!handle) return null;
+    const entry={handle,ready:false};
+    textures.set(url,entry);
+    const img=new Image();
+    entry.image=img;
+    img.decoding="async";
+    img.onload=()=>{
+      if(disposed||gl.isContextLost())return;
+      gl.bindTexture(gl.TEXTURE_2D,handle);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+      entry.ready=true;
+    };
+    img.src=url;
+    return entry;
+  }
+
+  function visible(center, radius, view, camera, max = env.fogFar + 48) {
+    const dx=center[0]-camera.x,dy=center[1]-camera.y,dz=center[2]-camera.z;
+    const dot = direction => direction[0]*dx+direction[1]*dy+direction[2]*dz;
+    if(dx*dx+dy*dy+dz*dz>(max+radius)**2)return false;
+    const depth=dot(view.forward);
+    return depth>=-radius &&
+      Math.abs(dot(view.right)) < Math.max(0,depth)*view.tanHalf*(canvas.width/canvas.height)+radius*1.4 &&
+      Math.abs(dot(view.up)) < Math.max(0,depth)*view.tanHalf+radius*1.4;
+  }
+
+  function setWorld(next) {
+    const uploaded = [];
+    try {
+      for (const mesh of next.meshes) uploaded.push(upload(mesh));
+    } catch (error) {
+      retire(uploaded);
+      throw error;
+    }
+    retire(worldMeshes);
+    worldMeshes = uploaded;
+    world = next;
+    env = { ...LAND, ...next.environment };
+    sunDirection = unit(...env.sunDirection);
+    panorama = texture(next.panorama);
+    for(const name of props) texture(assetURL("prop-"+name));
+  }
+
+  function setVehicles(next) {
+    const uploaded = [];
+    const load = mesh => {
+      const item = upload(mesh);
+      uploaded.push(item);
+      return item;
+    };
+    let selected;
+    try {
+      selected = next.map(model => ({
+        body: model.body.map(load),
+        wheel: model.wheel ? load(model.wheel) : null,
+        wheelOffsets: model.wheelOffsets || [],
+      }));
+    } catch (error) {
+      retire(uploaded);
+      throw error;
+    }
+    for (const model of models) {
+      retire(model.body);
+      if (model.wheel) release(model.wheel.buffer);
+    }
+    models = selected;
+    spins.clear();
+    timeBefore = null;
+  }
+
+  let mainProgram, skyProgram, effectProgram, streakProgram, foliageProgram, skyBuffer, effectsBuffer, leafBuffer, crystal;
+  try {
+    mainProgram = addProgram(meshVertex, meshFragment, ["aPosition", "aNormal", "aColor"], [
+      "uViewProjection", "uModel", "uEye", "uSunDirection", "uSunColor", "uFogColor", "uFogRange",
+      "uAmbient", "uTime", "uEmissive", "uRoughness", "uOpacity", "uSurface",
+    ]);
+    skyProgram = addProgram(screenVertex, skyFragment, ["aPosition"], [
+      "uForward", "uRight", "uUp", "uSkyTop", "uSkyBottom", "uSunDirection", "uSunColor",
+      "uAspect", "uTanHalf", "uTime", "uClouds", "uStars", "uPanorama", "uPanoramic",
+    ]);
+    foliageProgram = addProgram(foliageVertex, foliageFragment, ["aPosition","aUv","aShade"],
+      ["uViewProjection","uEye","uImage","uFog","uFogRange","uGrade"]);
+    effectProgram = addProgram(effectVertex, effectFragment, ["aPosition", "aUv", "aColor"], ["uViewProjection"]);
+    if (!reducedMotion) streakProgram = addProgram(screenVertex, streakFragment, ["aPosition"], ["uPower", "uTime", "uAspect"]);
+    skyBuffer = allocate(new Float32Array([-1, -1, 3, -1, -1, 3]));
+    effectsBuffer = allocate(effectsBatch.data.byteLength, gl.DYNAMIC_DRAW);
+    leafBuffer = allocate(sceneryFloats.byteLength, gl.DYNAMIC_DRAW);
+    if (typeof Image !== "undefined") {
+      pilots = createGLPilots(gl);
+      whiteTexture=gl.createTexture();
+      if(whiteTexture){
+        gl.bindTexture(gl.TEXTURE_2D,whiteTexture);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
+      }
+    }
+    for(const [kind,faces] of Object.entries(fixtures))
+      powers[kind]=upload(fixtureMesh(faces,{roughness:kind==="slick"?.24:.56,emissive:kind==="item"?.48:.12}));
+    crystal = upload(crystalMesh());
+    gl.enableVertexAttribArray(0);
+    gl.disable(gl.CULL_FACE);
+    gl.depthFunc(gl.LEQUAL);
+    gl.clearDepth(1);
+  } catch (error) {
+    dispose();
+    throw error;
+  }
+
+  function resize(width, height, deviceRatio = 1) {
+    if (!width || !height) return false;
+    let cap = width < 650 ? 1.6 : 1.65;
+    let pixelBudget = 1_560_000;
+    if (quality === "low") { cap = 1; pixelBudget = 860_000; }
+    else if (quality === "high") { cap = 2; pixelBudget = 2_550_000; }
+    const ratio = Math.min(deviceRatio, cap, Math.sqrt(pixelBudget / (width * height)), maxSize / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * ratio));
+    const h = Math.max(1, Math.round(height * ratio));
+    if (w !== canvas.width) canvas.width = w;
+    if (h !== canvas.height) canvas.height = h;
+    stats.width = w;
+    stats.height = h;
+    return true;
+  }
+
+  function triangles(count) {
+    gl.drawArrays(gl.TRIANGLES, 0, count);
+    stats.drawCalls++;
+    stats.triangles += count / 3;
+  }
+
+  function screen(program) {
+    gl.useProgram(program.handle);
+    gl.disableVertexAttribArray(1);
+    gl.disableVertexAttribArray(2);
+    gl.bindBuffer(array, skyBuffer);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  }
+
+  function sky(view, aspect, time) {
+    const u = skyProgram.u;
+    screen(skyProgram);
+    gl.uniform3fv(u.uForward, view.forward);
+    gl.uniform3fv(u.uRight, view.right);
+    gl.uniform3fv(u.uUp, view.up);
+    gl.uniform3fv(u.uSkyTop, env.skyTop);
+    gl.uniform3fv(u.uSkyBottom, env.skyBottom);
+    gl.uniform3fv(u.uSunDirection, sunDirection);
+    gl.uniform3fv(u.uSunColor, env.sun);
+    gl.uniform1f(u.uTanHalf, view.tanHalf);
+    gl.uniform1f(u.uAspect, aspect);
+    gl.uniform1f(u.uTime, reducedMotion ? 0 : time);
+    gl.uniform1f(u.uClouds, env.clouds);
+    gl.uniform1f(u.uStars, env.stars);
+    gl.uniform1f(u.uPanoramic, Number(!!panorama?.ready));
+    if(whiteTexture){
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D,panorama?.ready?panorama.handle:whiteTexture);
+      gl.uniform1i(u.uPanorama,0);
+    }
+    triangles(3);
+  }
+
+  function meshProgram(view, camera, time) {
+    const u = mainProgram.u;
+    gl.useProgram(mainProgram.handle);
+    gl.enableVertexAttribArray(1);
+    gl.enableVertexAttribArray(2);
+    eye[0] = camera.x;
+    eye[1] = camera.y;
+    eye[2] = camera.z;
+    gl.uniformMatrix4fv(u.uViewProjection, false, view.viewProjection);
+    gl.uniform3fv(u.uEye, eye);
+    gl.uniform3fv(u.uSunDirection, sunDirection);
+    gl.uniform3fv(u.uSunColor, env.sun);
+    gl.uniform3fv(u.uFogColor, env.fog);
+    gl.uniform2f(u.uFogRange, env.fogNear, env.fogFar);
+    gl.uniform1f(u.uAmbient, env.ambient);
+    gl.uniform1f(u.uTime, reducedMotion ? 0 : time);
+  }
+
+  function drawMesh(mesh, matrix, opacity = 1) {
+    const u = mainProgram.u;
+    gl.uniformMatrix4fv(u.uModel, false, matrix);
+    gl.uniform1f(u.uEmissive, mesh.emissive);
+    gl.uniform1f(u.uRoughness, mesh.roughness);
+    gl.uniform1f(u.uSurface, mesh.surface);
+    gl.uniform1f(u.uOpacity, opacity);
+    gl.bindBuffer(array, mesh.buffer);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 36, 0);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 36, 12);
+    gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 24);
+    triangles(mesh.count);
+  }
+
+  function drawFixtures(view,camera,time,effects){
+    if (!world?.hazards) return;
+    forVisibleFixtures(world,camera,time,effects,(kind,center,yaw,sx,sy,sz,frame)=>{
+      if(!visible(center,Math.max(2.5,sz+.5),view,camera,138))return;
+      transform(modelMatrix,...center,yaw,kind==="item"?0:frame.bank,kind==="item"?0:-Math.atan(frame.dy));
+      for(let i=0;i<3;i++){
+        modelMatrix[i]*=sx;
+        modelMatrix[i+4]*=sy;
+        modelMatrix[i+8]*=sz;
+      }
+      drawMesh(powers[kind],modelMatrix);
+    });
+  }
+
+  function drawFoliage(view,camera){
+    if(!world?.props?.length || !whiteTexture) return;
+    const leaves=world.props.filter(prop=>visible([prop.x,prop.y+prop.size*.45,prop.z],prop.size*.59,view,camera,165));
+    if(!leaves.length) return;
+    const program=foliageProgram, u=program.u;
+    gl.useProgram(program.handle);
+    gl.uniformMatrix4fv(u.uViewProjection,false,view.viewProjection);
+    gl.uniform3fv(u.uEye,eye);
+    gl.uniform3fv(u.uFog,env.fog);
+    gl.uniform2f(u.uFogRange,env.fogNear,env.fogFar+22);
+    const grade=env.sun.map(c=>.73+c*.26);
+    gl.uniform3fv(u.uGrade,grade);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(u.uImage,0);
+    gl.enableVertexAttribArray(1);
+    gl.enableVertexAttribArray(2);
+    gl.bindBuffer(array,leafBuffer);
+    gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);
+    gl.vertexAttribPointer(1,2,gl.FLOAT,false,24,12);
+    gl.vertexAttribPointer(2,1,gl.FLOAT,false,24,20);
+    const corners=[[0,1],[1,1],[0,0],[0,0],[1,1],[1,0]];
+    for(const type of props){
+      const image=textures.get(assetURL("prop-"+type));
+      if(!image?.ready)continue;
+      let i=0;
+      for(const item of leaves){
+        if(item.type!==type || i+36>sceneryFloats.length)continue;
+        const [rx,,rz]=unit(camera.z-item.z,0,item.x-camera.x);
+        for(const [u,v] of corners){
+          const along=(u-.5)*item.width;
+          sceneryFloats[i++]=item.x+rx*along;
+          sceneryFloats[i++]=item.y+(1-v)*item.size;
+          sceneryFloats[i++]=item.z+rz*along;
+          sceneryFloats[i++]=item.flip ? 1-u : u;
+          sceneryFloats[i++]=v;
+          sceneryFloats[i++]=item.bright ? 1.04 : .85;
+        }
+      }
+      if(!i)continue;
+      gl.bindTexture(gl.TEXTURE_2D,image.handle);
+      gl.bufferSubData(array,0,sceneryFloats.subarray(0,i));
+      triangles(i/6);
+    }
+  }
+
+  function drawPickups(view, camera, pickupState, time) {
+    if (!world?.pickupPositions) return;
+    const forward = view.forward;
+    for (const [index, pickup] of world.pickupPositions.entries()) {
+      const flag = pickupState?.[pickup.index ?? index];
+      if (flag === false || flag?.active === false) continue;
+      const dx = pickup.x - camera.x, dy = pickup.y - camera.y, dz = pickup.z - camera.z;
+      if (dx * dx + dy * dy + dz * dz > 112 ** 2 || forward[0] * dx + forward[1] * dy + forward[2] * dz < -2) continue;
+      const cycle = reducedMotion ? 0 : time * 2.1 + index * 1.33;
+      const hover = 0.86 + .17 * Math.sin(cycle);
+      transform(modelMatrix, pickup.x, pickup.y + hover, pickup.z, cycle * .72, .12, .10);
+      drawMesh(crystal, modelMatrix);
+    }
+  }
+
+  function fxPass(view, additive) {
+    const writer = effectsBatch;
+    if (!writer.count) return;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, additive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.useProgram(effectProgram.handle);
+    gl.uniformMatrix4fv(effectProgram.u.uViewProjection, false, view.viewProjection);
+    gl.enableVertexAttribArray(1);
+    gl.enableVertexAttribArray(2);
+    gl.bindBuffer(array, effectsBuffer);
+    gl.bufferSubData(array, 0, writer.data.subarray(0, writer.count));
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 36, 0);
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 36, 12);
+    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, 36, 20);
+    triangles(writer.count / 9);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+    writer.count = 0;
+  }
+
+  function shadowFor(car) {
+    const c = Math.cos(car.yaw), s = Math.sin(car.yaw);
+    const roadHeight = Number.isFinite(car.roadY) ? car.roadY : car.y;
+    const height = Math.max(0, car.y - roadHeight);
+    const softness = Math.min(0.6, height * 0.17);
+    const pitch = Number.isFinite(car.roadPitch) ? car.roadPitch : (car.pitch || 0);
+    const bank = car.bank || 0;
+    splat(effectsBatch, car.x, roadHeight + .065, car.z, c * (1.05 + softness), bank, -s * (1.05 + softness),
+      s * (1.61 + softness), -pitch * 1.56, c * (1.61 + softness), SHADOW, .58 - softness * .55);
+    splat(effectsBatch, car.x, roadHeight + .07, car.z, c * .68, bank * .63, -s * .68,
+      s * 1.05, -pitch, c * 1.05, SHADOW, .28 - softness * .28);
+  }
+
+  function drawCar(car, frameDelta, time) {
+    const chosen = models[(car.model ?? car.id) % models.length] || models[0];
+    if (!chosen) return;
+    const y = car.y + (car.ghost ? .018 : 0);
+    transform(bodyMatrix, car.x, y, car.z, car.yaw, car.roll || 0, car.pitch || 0);
+    const alpha = car.ghost ? .41 + .05 * Math.sin(time * 3) : 1;
+    for (const mesh of chosen.body) drawMesh(mesh, bodyMatrix, alpha);
+    if (!chosen.wheel) return;
+    const key = car.ghost ? "ghost" : car.id;
+    const previous = spins.get(key) || 0;
+    const spin = Number.isFinite(car.s) ? ((car.s / .35) % TAU) : (previous - car.speed * frameDelta / .35) % TAU;
+    spins.set(key, Number.isFinite(spin) ? spin : 0);
+    for (const offset of chosen.wheelOffsets) {
+      const steer = offset[2] > 0 ? clamp(car.steer || 0, -1, 1) * .34 : 0;
+      wheelTransform(wheelMatrix, bodyMatrix, offset, steer, spins.get(key));
+      drawMesh(chosen.wheel, wheelMatrix, alpha);
+    }
+  }
+
+  function trailsFor(car, view, time) {
+    if (!car.drift && !car.boost && !car.offroad && !car.item) return;
+    const { right: xAxis, up: yAxis } = view;
+    const sy = Math.sin(car.yaw), cy = Math.cos(car.yaw);
+    const tailX = car.x - sy * 1.26, tailZ = car.z - cy * 1.26;
+    const boosting = car.boost > 0;
+    const smoke = car.offroad && !boosting && !car.drift;
+    const sign = car.steer < 0 ? -1 : 1;
+    const trails = reducedMotion ? 2 : boosting ? 15 : smoke ? 6 : 10;
+    for (let j = 0; j < trails; j++) {
+      const path = ((j / trails + time * (boosting ? 3.1 : 2.85)) % 1 + 1) % 1;
+      const across = j % 2 ? .60 : -.60;
+      const along = path * (boosting ? 4.1 : 1.65);
+      const scatter = across + sign * path * (boosting ? .18 : .57) + .17 * Math.sin(j * 2.4 + time * 11);
+      const x = tailX - sy * along + cy * scatter;
+      const z = tailZ - cy * along - sy * scatter;
+      const groundBehind = car.y + (car.roadPitch || car.pitch || 0) * along;
+      const y = groundBehind + .29 + path * (boosting ? .20 : smoke ? .73 : .39);
+      const width = smoke ? .15 + path * .31 : .042 + (1 - path) * (boosting ? .17 : .091);
+      const stretch = smoke ? width * 1.03 : width * (boosting ? 1.62 : 1.48);
+      const color = boosting ? (j % 3 ? TURBO : CREAM) : smoke ? DUST : (j % 3 ? SPARK : CREAM);
+      const strength = (smoke ? .15 : boosting ? .56 : .58) * (1 - path) * (reducedMotion ? .46 : 1);
+      splat(effectsBatch, x, y, z, xAxis[0] * width, xAxis[1] * width, xAxis[2] * width,
+        yAxis[0] * stretch, yAxis[1] * stretch, yAxis[2] * stretch, color, strength);
+    }
+  }
+
+  function streak(aspect, time, power) {
+    if (!streakProgram || power < .015) return;
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    screen(streakProgram);
+    gl.uniform1f(streakProgram.u.uPower, power);
+    gl.uniform1f(streakProgram.u.uTime, time);
+    gl.uniform1f(streakProgram.u.uAspect, aspect);
+    triangles(3);
+    gl.disable(gl.BLEND);
+  }
+
+  function draw({ camera, vehicles = [], time = 0, boost, effects } = {}) {
+    const start = typeof performance === "undefined" ? 0 : performance.now();
+    if (!camera || disposed || gl.isContextLost()) {
+      if (!disposed && canvas) stats.contextLost = gl.isContextLost();
+      return false;
+    }
+    if (!drawable || !canvas.width || !canvas.height) return false;
+    stats.drawCalls = 0;
+    stats.triangles = 0;
+    const aspect = canvas.width / canvas.height;
+    const view = viewFor(camera, aspect, .09, Math.max(258, env.fogFar * 1.62));
+    const dt = timeBefore === null ? 0 : clamp(time - timeBefore, 0, .067);
+    timeBefore = time;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);
+    gl.depthMask(true);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    sky(view, aspect, time);
+    gl.enable(gl.DEPTH_TEST);
+    meshProgram(view, camera, time);
+    for (const mesh of worldMeshes) {
+      if(!mesh.bounds || visible(mesh.bounds.center,mesh.bounds.radius,view,camera)) drawMesh(mesh, identity);
+    }
+    drawPickups(view, camera, effects?.pickups, time);
+    drawFixtures(view,camera,time,effects);
+    drawFoliage(view,camera);
+
+    const visibleCars = [];
+    const ghosts = [];
+    for (const car of vehicles) {
+      if (car.ghost) { ghosts.push(car); continue; }
+      if (camera.hidePlayer && car.id === 0) continue;
+      visibleCars.push(car);
+      shadowFor(car);
+    }
+    fxPass(view, false);
+    meshProgram(view, camera, time);
+    for (const car of visibleCars) {
+      if(!pilots?.ready(car))drawCar(car,dt,time);
+    }
+    if (ghosts.length) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      for (const car of ghosts) {
+        if(!pilots?.ready(car))drawCar(car,dt,time);
+      }
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+    }
+    if(pilots){
+      for(const car of [...visibleCars,...ghosts]) {
+        if(pilots.ready(car))pilots.draw(view,camera,car,time,env,effects?.calm);
+      }
+    }
+    if (visibleCars.length && !effects?.calm) {
+      for (const car of visibleCars) trailsFor(car, view, time);
+      fxPass(view, true);
+    }
+    const boostPower = boost === true ? 1 : typeof boost === "number" ? clamp(boost, 0, 1) :
+      (vehicles[0]?.boost > 0 ? .86 : 0);
+    streak(aspect, time, boostPower);
+    if (start) stats.frameMs = performance.now() - start;
+    return true;
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    drawable = false;
+    pilots?.dispose();
+    if(whiteTexture)gl.deleteTexture(whiteTexture);
+    for(const entry of textures.values()){
+      entry.image.onload=null;
+      gl.deleteTexture(entry.handle);
+    }
+    textures.clear();
+    for (const buffer of buffers) gl.deleteBuffer(buffer);
+    for (const { handle } of programs) gl.deleteProgram(handle);
+    buffers.clear();
+    programs.length = 0;
+    worldMeshes = [];
+    models = [];
+    world = null;
+  }
+
+  return { setWorld, setVehicles, draw, resize, dispose, stats };
+}
