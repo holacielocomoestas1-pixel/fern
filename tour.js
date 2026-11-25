@@ -33,23 +33,23 @@
 
   /* Una frase simple por paso: qué es y para qué sirve. */
   var STEPS = [
-    { target: ['#resume-lesson', '.hero', 'nav.tabs button[data-go="home"]'],
+    { target: ['#resume-lesson', '.hero', '.sidebar button[data-go="home"]', 'nav.tabs button[data-go="home"]'],
       title: { th: 'เส้นทางของเฟิร์น', en: 'Your Path' },
       text: { th: 'นี่คือเส้นทางของเฟิร์น — ดูภารกิจวันนี้ แล้วกดเริ่มเรียนได้เลย',
               en: 'This is your path — see today\u2019s mission and tap to start learning.' } },
-    { target: ['nav.tabs button[data-go="learn"]'],
+    { target: ['.sidebar button[data-go="learn"]', 'nav.tabs button[data-go="learn"]'],
       title: { th: 'บทเรียน', en: 'Lessons' },
       text: { th: 'บทเรียนสั้น ๆ อ่านจบใน 2–3 นาที เรียนทีละวิชาไปเรื่อย ๆ',
               en: 'Short lessons, 2–3 minutes each — learn one subject at a time.' } },
-    { target: ['nav.tabs button[data-go="quiz"]'],
+    { target: ['.sidebar button[data-go="quiz"]', 'nav.tabs button[data-go="quiz"]'],
       title: { th: 'ฝึกข้อสอบ', en: 'Practice' },
       text: { th: 'ตอบคำถามเพื่อฝึกฝน ตอบถูกได้ XP ยิ่งฝึกยิ่งเก่ง',
               en: 'Answer questions to practise — correct answers earn XP. The more you practise, the better you get.' } },
-    { target: ['nav.tabs button[data-go="cards"]'],
+    { target: ['.sidebar button[data-go="cards"]', 'nav.tabs button[data-go="cards"]'],
       title: { th: 'การ์ดจำ', en: 'Flashcards' },
       text: { th: 'แตะการ์ดเพื่อพลิกดูคำตอบ ท่องซ้ำจนจำแม่น',
               en: 'Tap a card to flip it and see the answer — repeat until you remember it.' } },
-    { target: ['#fern-academia-entry', '#fern-academia-entry a', '.home-actions'],
+    { target: ['#sidebar-academy', '#fern-academia-entry', '#fern-academia-entry a', '.home-actions'],
       title: { th: 'ห้องเตรียมสอบ', en: 'Study Academy' },
       text: { th: 'ห้องเตรียมสอบมีข้อสอบ 6,104 ข้อ พร้อมเกมสนุก ๆ ให้ฝึก',
               en: 'The Academy has 6,104 questions, plus fun games to practise with.' } }
@@ -313,10 +313,10 @@
     btnSkip.textContent = UI.skip[L];
     var target = findTarget(step);
     if (target) {
-      // Los botones del dock son fixed: no necesitan scroll. El resto se
-      // centra en la vista antes de medir.
+      // Los botones del dock son fixed: no necesitan scroll. Lo mismo
+      // vale para la barra lateral de escritorio (contenedor fixed).
       var fixed = false;
-      try { fixed = window.getComputedStyle(target).position === 'fixed'; }
+      try { fixed = window.getComputedStyle(target).position === 'fixed' || !!target.closest('.sidebar'); }
       catch (e) { /* medir sin desplazar */ }
       if (!fixed) {
         try {

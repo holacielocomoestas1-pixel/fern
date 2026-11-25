@@ -312,7 +312,8 @@ function go(name) {
   for (const view of document.querySelectorAll('.view')) {
     view.classList.toggle('on', view.id === 'v-' + name);
   }
-  for (const button of document.querySelectorAll('nav.tabs button')) {
+  /* v7.0: espejar el estado activo en el dock Y en la barra lateral. */
+  for (const button of document.querySelectorAll('nav.tabs button, .sidebar button[data-go]')) {
     const active = button.dataset.go === name;
     button.classList.toggle('on', active);
     if (active) button.setAttribute('aria-current', 'page');
@@ -321,6 +322,35 @@ function go(name) {
   window.scrollTo(0, 0);
   document.querySelector('#v-' + name + ' h1')?.focus({ preventScroll: true });
 }
+
+/* v7.0 — atajos de teclado (escritorio): Enter avanza en el quiz
+   (comprobar respuesta, luego siguiente pregunta) y las flechas cambian
+   de ficha. No actúan con un modal, el tour o el login abiertos, ni con
+   el foco en un campo editable o en un botón que no sea del quiz. */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (document.querySelector('dialog[open]') || document.querySelector('.tour-overlay')
+    || document.body.classList.contains('login-open')) return;
+  const target = e.target;
+  const tag = target && target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'A' || tag === 'SUMMARY') return;
+  if (e.key === 'Enter') {
+    const onOpt = target && target.classList && target.classList.contains('opt');
+    const onQuizBtn = target && (target.id === 'chk' || target.id === 'nxt');
+    if (tag === 'BUTTON' && !onOpt && !onQuizBtn) return;
+    const next = document.getElementById('nxt');
+    if (next) { e.preventDefault(); next.click(); return; }
+    const check = document.getElementById('chk');
+    if (check && !check.disabled) { e.preventDefault(); check.click(); }
+    return;
+  }
+  const cardsView = document.getElementById('v-cards');
+  if (cardsView && cardsView.classList.contains('on')) {
+    const btn = document.getElementById(e.key === 'ArrowLeft' ? 'fc-prev' : 'fc-next');
+    if (btn) { e.preventDefault(); btn.click(); }
+  }
+});
 
 function renderHUD() {
   const progress = document.getElementById('goal-progress');

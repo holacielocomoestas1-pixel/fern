@@ -88,6 +88,25 @@
     </div>
   </header>
 
+  <!-- v7.0: barra lateral de escritorio (solo ≥1024px; en móvil la oculta
+       el CSS y la navegación sigue siendo el dock inferior). -->
+  <nav class="sidebar" aria-label="Navigation / เมนูหลัก">
+    <button type="button" class="sidebar-logo" onclick="go('home')" aria-label="Fern">
+      Fern<span class="logo-period" aria-hidden="true">.</span>
+    </button>
+    <div class="sidebar-links">
+      <button type="button" class="on" data-go="home" aria-current="page"><span class="nav-icon route-icon" aria-hidden="true"></span><span data-i18n="tabHome">เส้นทาง</span></button>
+      <button type="button" data-go="learn"><span class="nav-icon learn-icon" aria-hidden="true"></span><span data-i18n="tabLearn">บทเรียน</span></button>
+      <button type="button" data-go="quiz"><span class="nav-icon quiz-icon" aria-hidden="true"></span><span data-i18n="tabQuiz">ฝึกข้อสอบ</span></button>
+      <button type="button" data-go="cards"><span class="nav-icon cards-icon" aria-hidden="true"></span><span data-i18n="tabCards">การ์ดจำ</span></button>
+      <span class="sidebar-div" aria-hidden="true"></span>
+      <a id="sidebar-academy" href="fern-academia/index.html?lang=th#home"><span class="sidebar-emoji" aria-hidden="true">📚</span><span>ห้องเตรียมสอบ</span></a>
+      <button type="button" id="sidebar-progress"><span class="sidebar-emoji" aria-hidden="true">📊</span><span data-i18n="progressTitle">เราไปถึงไหนแล้ว</span></button>
+      <span class="sidebar-div" aria-hidden="true"></span>
+      <button type="button" data-go="more"><span class="nav-icon profile-icon" aria-hidden="true"></span><span data-i18n="tabMore">แผน</span></button>
+    </div>
+  </nav>
+
   <main class="wrap" id="main">
     <section class="view on" id="v-home" aria-labelledby="home-title">
       <section class="hero" aria-labelledby="home-title">

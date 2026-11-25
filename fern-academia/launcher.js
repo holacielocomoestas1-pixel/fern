@@ -20,6 +20,16 @@
       link.textContent = labels[index];
       link.href = target.href;
     });
+    /* v7.0: el enlace Academy de la barra lateral (escritorio) usa la
+       misma construcción que el primer enlace de Home. */
+    const side = document.getElementById("sidebar-academy");
+    if (side) {
+      const target = new URL(base);
+      target.search = new URLSearchParams({ lang }).toString();
+      target.hash = "home";
+      side.lastElementChild.textContent = labels[0];
+      side.href = target.href;
+    }
   };
   links.forEach(link => {
     link.style.cssText = "display:inline-flex;align-items:center;min-height:44px;color:inherit;text-underline-offset:5px;font-weight:650";

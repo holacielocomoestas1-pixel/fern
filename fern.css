@@ -1264,6 +1264,7 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
   .acct-email-row input, .auth-field input, .btn.blue, .btn.red,
   .plan-bar, #fern-academia-entry a { background-image: none; }
 }
+
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .home-actions, .path details, .native-list details, .learn-progress,
   .card, .guide-sec, .plain-details, .menu-group, .stat-cell,
@@ -1290,4 +1291,113 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
   .menu-ic, .plan-bar__icon, .score-pill, .week-tag,
   .acct-email-row input, .auth-field input, .btn.blue, .btn.red,
   .plan-bar, #fern-academia-entry a { background-image: none; }
+}
+
+/* ===== v7.0 — versión de escritorio (APP PRINCIPAL) =====
+   Solo layout y tipografía dentro de @media (min-width: 1024px).
+   Verde (#0c241c, #c9efb9), mascota, vidrio KITE y móvil (≤760px)
+   intactos: este bloque no toca ningún color ni ninguna imagen. */
+
+/* La barra lateral no existe en móvil: oculta por defecto. */
+.sidebar { display: none; }
+
+@media (min-width: 1024px) {
+  :root { --measure: 1120px; }
+  body {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: 248px;
+    font-size: 17px;
+  }
+  /* En quiz/simulacro la barra se esconde y el contenido recupera el ancho. */
+  body.quiz-on { padding-left: 0; }
+  body.quiz-on .sidebar { display: none; }
+
+  /* --- Barra lateral fija --- */
+  .sidebar {
+    display: flex; flex-direction: column; gap: 18px;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 30; width: 248px;
+    padding: calc(20px + env(safe-area-inset-top)) 16px 20px;
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border-right: 1px solid var(--glass-border);
+  }
+  .sidebar-logo {
+    min-height: 44px; display: inline-flex; align-items: center;
+    border: 0; padding: 0 12px; background: transparent;
+    font-size: 31px; font-weight: 780; letter-spacing: -.067em; color: var(--ink);
+    text-align: start;
+  }
+  .sidebar-links { display: flex; flex-direction: column; gap: 4px; }
+  .sidebar-links button[data-go], .sidebar-links #sidebar-progress, .sidebar-links a {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    min-height: 48px; padding: 10px 14px; border: 0; border-radius: 14px;
+    background: transparent; color: var(--ink);
+    font-size: 15.5px; font-weight: 650; line-height: 1.3; text-align: start;
+    text-decoration: none; cursor: pointer;
+  }
+  .sidebar-links button[data-go]:hover, .sidebar-links #sidebar-progress:hover,
+  .sidebar-links a:hover { background: var(--soft); color: var(--green); }
+  .sidebar-links button[data-go].on {
+    background: var(--green-soft); color: var(--green); font-weight: 770;
+  }
+  .sidebar .nav-icon { width: 20px; height: 20px; flex: 0 0 20px; }
+  .sidebar-emoji {
+    width: 20px; flex: 0 0 20px; display: grid; place-items: center;
+    font-size: 19px; line-height: 1;
+  }
+  .sidebar-div { height: 1px; background: var(--line); margin: 10px 8px; }
+
+  /* --- Sin dock en escritorio --- */
+  .tabs { display: none; }
+
+  /* --- Héroe: arte acotado, titular menor --- */
+  .hero { gap: 40px; }
+  .hero-text { padding: 24px 0 40px; }
+  .hero h1 { font-size: clamp(40px, 3.6vw, 54px); }
+  .hero-art img { max-width: 400px; margin-inline: auto; }
+
+  /* --- Anchos de lectura propios de escritorio --- */
+  .inner-view { max-width: 860px; }
+  #quiz-box, #mock-box, .mock-panel { max-width: 860px; }
+  .reader { width: min(960px, calc(100% - 48px)); }
+  /* Los tres bloques docentes («En simple» / «¿Por qué?» / gancho) en
+     3 columnas: los tres visibles sin bajar. */
+  .reader .teach-block {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px; align-items: stretch;
+  }
+  .reader .teach-card { margin: 0; }
+
+  /* --- Practice: tarjetas en 4 columnas, opciones en 2 --- */
+  .utility-list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  #quiz-box #opts {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+  }
+  #quiz-box #opts .opt { margin-bottom: 0; }
+  #quiz-box #opts .opt:nth-child(odd):last-child { grid-column: 1 / -1; }
+
+  /* --- Learn y Practice: materias en 2 columnas --- */
+  #learn-list.native-list {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px; align-items: start;
+  }
+  #learn-list .learn-progress { grid-column: 1 / -1; }
+  #quiz-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+  /* --- Fichas y perfil --- */
+  .fc { min-height: 320px; }
+  .modal > div { width: min(100%, 480px); }
+  .sheet-modal > div { max-width: 560px; }
+
+  /* --- Hovers visibles de escritorio --- */
+  .utility-row:hover, .lesson-row:hover, .subject-row:hover, .menu-row:hover {
+    background: var(--soft);
+  }
+
+  /* --- Toast abajo a la derecha, a 24px del borde --- */
+  .toast { left: auto; right: 24px; bottom: 24px; transform: none; }
+}
+
+@media (min-width: 1440px) {
+  :root { --measure: 1200px; }
 }

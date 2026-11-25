@@ -49,7 +49,10 @@ function subjName(s){return LANG==='en'?SUBJ_EN[s.id]+(s.id==='saraban'?'':' · 
 function toast(msg){var d=document.createElement('div');d.className='toast';d.textContent=msg;document.getElementById('fx').appendChild(d);setTimeout(function(){d.remove();},1600);}
 function celebrate(title,body,btnTxt,cb){confetti();var r=document.getElementById('modal-root');r.innerHTML='<div class="modal"><div style="text-align:center"><div>'+mascotArt(110,'cheer')+'</div><div class="big">'+esc(title)+'</div><p class="mut">'+body+'</p><button class="btn" id="cel-btn">'+esc(btnTxt)+'</button></div></div>';document.getElementById('cel-btn').addEventListener('click',function(){r.innerHTML='';if(cb)cb();});}
 /* ===== Navigation ===== */
-document.querySelectorAll('nav.tabs button').forEach(function(b){b.addEventListener('click',function(){go(b.getAttribute('data-go'));});});
+/* v7.0: el dock y la barra lateral (escritorio) navegan igual. */
+document.querySelectorAll('nav.tabs button, .sidebar button[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.getAttribute('data-go'));});});
+/* v7.0: «Cómo vamos» desde la barra lateral. */
+document.getElementById('sidebar-progress').addEventListener('click',function(){if(window.FernTeach&&FernTeach.openProgress)FernTeach.openProgress();});
 document.getElementById('lang-th').addEventListener('click',function(){LANG='th';LS.set('lang','th');applyLang();});
 document.getElementById('lang-en').addEventListener('click',function(){LANG='en';LS.set('lang','en');applyLang();});
 /* ===== Optional exam date (user-set, no fixed date) ===== */
