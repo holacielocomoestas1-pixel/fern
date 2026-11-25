@@ -1125,6 +1125,128 @@ input.blank:focus-visible, .auth-field input:focus-visible, .login-email-form in
   .plain-details .card::before { display: none; }
 }
 
+/* v5.2: páginas internas al nivel del login (orden de Kevin: que TODO se
+   vea como el login). Diagnóstico: el login es UNA tarjeta grande (26px,
+   tinte profundo, especular con ~140px de caída, sombra profunda, mucho
+   aire); las internas eran tarjetas pequeñas y densas con el mismo
+   especular comprimido en ~35px, sombras cortas y 8-10px de aire. La
+   brecha se cierra con tinte más profundo, especular más visible,
+   sombra más profunda, radios de 26px en primarias y MÁS AIRE — SIN blur
+   (sobre fondo plano es invisible y cuesta rendimiento en listas largas).
+   Verde y mascota intactos. Se inserta ANTES de los fallbacks opacos
+   v5.1 para que estos sigan mandando en sus condiciones. */
+:root {
+  --glass-hero-spec: linear-gradient(rgba(255, 255, 255, .13) 0%, rgba(255, 255, 255, .05) 35%, rgba(255, 255, 255, 0) 60%);
+  --glass-hero-tint: rgba(22, 46, 35, .72);
+  --glass-hero-glow: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -1px 0 rgba(255, 255, 255, .03), 0 0 0 .5px rgba(0, 0, 0, .16), 0 10px 28px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .25);
+  --glass-mid-glow: inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 -1px 0 rgba(255, 255, 255, .03), 0 0 0 .5px rgba(0, 0, 0, .16), 0 8px 22px rgba(0, 0, 0, .32);
+}
+
+/* --- Tarjetas héroe: tratamiento completo del login (26px) --- */
+.home-actions, .learn-progress, .menu-group, .card, .guide-sec, .plain-details {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+  border-radius: 26px;
+}
+/* Tarjeta anidada dentro de un details: tratamiento v5.1 (sin sombra héroe apilada). */
+.plain-details .card {
+  background-color: var(--glass-strong);
+  background-image: var(--glass-spec);
+  box-shadow: var(--glass-glow);
+  border-radius: 18px;
+}
+/* Entradas Academy/Juegos y barra de plan: conservan su tinte verde
+   propio; ganan especular héroe + sombra profunda + radio 26px. */
+#fern-academia-entry a, .plan-bar {
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+  border-radius: 26px;
+}
+
+/* --- Tarjetas por materia: vidrio héroe, borde superior de color intacto --- */
+.path details, .native-list details {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+  border-radius: 26px;
+}
+.path, .native-list { gap: 14px; }
+.path summary, .native-list summary, .plain-details > summary {
+  min-height: 72px; padding: 14px 44px 14px 18px;
+}
+
+/* --- Filas de lección: especular héroe + más aire (sin sombra apilada) --- */
+.lesson-row {
+  background-image: var(--glass-hero-spec);
+  padding: 12px 14px;
+}
+.lesson-rows { gap: 10px; padding: 0 14px 14px; }
+
+/* --- Filas por materia y tarjetas 2×2: vidrio héroe --- */
+.subject-row, .utility-row {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+  border-radius: 24px;
+  min-height: 68px; padding: 14px 44px 14px 16px;
+}
+#quiz-list { gap: 14px; }
+.utility-list { gap: 14px; }
+.utility-row { min-height: 140px; padding: 18px 16px; border-radius: 26px; }
+
+/* --- Quiz: opciones, fichas y emparejar al nivel héroe --- */
+.opt, .matchbtn, .fc {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+  border-radius: 24px;
+}
+.opt { min-height: 58px; padding: 15px 16px; margin-bottom: 12px; }
+/* Los estados conservan su color Y recuperan el especular (el background
+   abreviado del estado lo borraba en v5.1). */
+.opt.sel, .opt.ok, .opt.correct, .opt.no, .opt.wrong,
+.matchbtn.sel, .matchbtn.done {
+  background-image: var(--glass-hero-spec);
+}
+.feedback {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+  border-radius: 24px; padding: 16px 18px;
+}
+
+/* --- Home: vidrio héroe SIN romper la home compacta. Presupuesto: el
+   objetivo de hoy terminaba en 755 con el dock en 778; las filas 46→48px
+   lo llevan a ~767, y recortar 4px del aire sobre Today lo deja en ~763
+   (15px de aire). El resto es tinte/especular/sombra/radio, sin altura. --- */
+.home-row { min-height: 48px; padding: 8px 18px 8px 20px; }
+@media (max-width: 760px) { .today { padding-top: 6px; } }
+
+/* --- Perfil: celdas, menús y barra al nivel héroe --- */
+.stat-grid { gap: 12px; }
+.stat-cell {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-mid-glow);
+  border-radius: 20px; padding: 14px 6px 12px;
+}
+.menu-row { min-height: 68px; padding: 12px 16px; }
+.plan-bar { padding: 16px 18px; }
+
+/* --- Piezas pequeñas: especular héroe (sin sombra apilada) --- */
+.subj-ic, .util-ic, .util-ic.daily, .util-ic.mistakes, .util-ic.extra, .util-ic.mock,
+.menu-ic, .plan-bar__icon, .score-pill, .week-tag, .chip, .avatar-opt,
+.plan-step, .week-list li {
+  background-image: var(--glass-hero-spec);
+}
+.btn.ghost, .btn.secondary, .btn.yellow {
+  background-color: var(--glass-hero-tint);
+  background-image: var(--glass-hero-spec);
+  box-shadow: var(--glass-hero-glow);
+}
+.btn.blue, .btn.red { background-image: var(--glass-hero-spec); }
+
 /* --- Vidrio opaco para los elementos v5.1: sin backdrop-filter o con
    reducir transparencia / reducir movimiento. El opaco es el propio tinte
    verdoso a opacidad completa, no gris. --- */
