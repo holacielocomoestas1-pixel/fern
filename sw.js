@@ -1,6 +1,6 @@
 'use strict';
 /* Fern service worker — app shell offline. Generado por gen-sw.js; no editar a mano. */
-const CACHE = 'fern-v8.3.1';
+const CACHE = 'fern-v8.4';
 const SHELL = [
   './',
   'index.html',
@@ -143,10 +143,13 @@ const SHELL = [
   'fern-academia/games/rally3d/classic/race.mjs',
   'fern-academia/games/rally3d/courses.mjs',
   'fern-academia/games/rally3d/courses.test.mjs',
+  'fern-academia/games/rally3d/drone-camera.test.mjs',
   'fern-academia/games/rally3d/fern-mark.mjs',
   'fern-academia/games/rally3d/game.mjs',
   'fern-academia/games/rally3d/gamepad.mjs',
   'fern-academia/games/rally3d/gamepad.test.mjs',
+  'fern-academia/games/rally3d/gyro-power.mjs',
+  'fern-academia/games/rally3d/gyro-power.test.mjs',
   'fern-academia/games/rally3d/item-quiz.mjs',
   'fern-academia/games/rally3d/item-quiz.test.mjs',
   'fern-academia/games/rally3d/kart-mesh.mjs',
@@ -154,6 +157,8 @@ const SHELL = [
   'fern-academia/games/rally3d/karts.test.mjs',
   'fern-academia/games/rally3d/model.mjs',
   'fern-academia/games/rally3d/model.test.mjs',
+  'fern-academia/games/rally3d/multi-touch.mjs',
+  'fern-academia/games/rally3d/multi-touch.test.mjs',
   'fern-academia/games/rally3d/pilot.mjs',
   'fern-academia/games/rally3d/pilot.test.mjs',
   'fern-academia/games/rally3d/powers.mjs',
@@ -165,11 +170,13 @@ const SHELL = [
   'fern-academia/games/rally3d/render-shaders.mjs',
   'fern-academia/games/rally3d/renderer.mjs',
   'fern-academia/games/rally3d/renderer.test.mjs',
+  'fern-academia/games/rally3d/software-light.mjs',
   'fern-academia/games/rally3d/software-model.mjs',
   'fern-academia/games/rally3d/software-scenery.mjs',
   'fern-academia/games/rally3d/software.mjs',
   'fern-academia/games/rally3d/sound-worlds.mjs',
   'fern-academia/games/rally3d/style.css',
+  'fern-academia/games/rally3d/sun-shadow.mjs',
   'fern-academia/games/rally3d/world-fixtures.mjs',
   'fern-academia/games/rally3d/world-flora.mjs',
   'fern-academia/games/rally3d/world-geometry.mjs',
