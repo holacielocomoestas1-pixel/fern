@@ -4,6 +4,7 @@ import { blendHex, forVisibleFixtures } from "./world.mjs";
 import { fixtures, transformFace } from "./world-fixtures.mjs";
 import { createSoftwareModels } from "./software-model.mjs";
 import { createSoftwareScenery } from "./software-scenery.mjs";
+import { createSurfaceLight, puddle, lightShafts, filmWeather } from "./software-light.mjs";
 
 const TAU = Math.PI * 2;
 const NEAR = .30;
@@ -18,7 +19,7 @@ const themes = {
     grass: "#56834e", land: "#2b6657", hill: "#406e58", peak: "#699289",
     road: "#445b53", roadLight: "#526e62", curb: "#e9deb0", stripe: "#60b7a7",
     wood: "#7a5c48", metal: "#548478", glow: "#ffe19e", water: "#63bcad",
-    bark: "#694935", leaves: "#267156", light: "#67b074", rock: "#6b8177",
+    bark: "#584531", leaves: "#374f44", light: "#79875d", rock: "#68746b",
   },
   lantern: {
     grass: "#564365", land: "#3b3858", hill: "#59466f", peak: "#976d88",
@@ -187,6 +188,7 @@ function gateMeshes(course, extra, letter) {
 function makeCourseArt(course, world) {
   const random = seed(course.seed ^ 0x773d92);
   const tiles = [];
+  const surface = [];
   const props = [];
   const signs = [];
   const gates = [], labels = [];
@@ -211,20 +213,35 @@ function makeCourseArt(course, world) {
         near(outer,side*(width+8.9),-.27,i%3 ? "land":"grass");
         near(side*(width+8.9),side*(width+26.5),-1.35,i%6 ? "land":"hill");
       }
-      near(curbStart,curbEnd,.033,i%4 < 2 ? "stripe" : "curb");
+      near(curbStart,curbEnd,.033,i%7 < 3 ? "stripe" : "curb");
       if (bridge) {
         near(outer - .12,outer + .12,.69,"metal");
         if (i%2 === 0) props.push({ type:"post", center:roadPoint(course,s,outer,.07), size:1.04 });
       }
     }
-    push(-width+.13,width-.13,0,bridge ? i%2 ? "wood":"rock" : i%11===0 ? "roadLight":"road");
-    push(-width*.65,width*.65,.007,bridge ? "wood" : i%7 ? "paving" : "roadLight");
+    push(-width+.13,width-.13,0,bridge ? i%2 ? "wood":"rock" : "road");
     if (!bridge) {
-      push(-width*.68,-width*.57,.024,"rubber");
-      push(width*.50,width*.62,.024,"rubber");
-    }
-    if (!bridge && i%4 === 0) {
-      push(-.075,.075,.026,"metal");
+      faces.at(-1).asphalt = true;
+      const wear = i%9 === 0 ? "rubberDark" : "rubber";
+      const left = -width * .48 + Math.sin(s * .12) * .12;
+      const right = width * .42 + Math.cos(s * .14) * .19;
+      const strip = (offset, spread, paint) => ({
+        points:ribbon(course, s, end, offset-spread, offset+spread, .025), paint,
+      });
+      const details = [];
+      if(i%8>=2)details.push(strip(left, .026+random()*.022, wear));
+      if(i%9>=3)details.push(strip(right, .041+random()*.021, wear));
+      if (i%4 === 0) details.push(strip(0, .064, "roadDash"));
+      surface.push({ center, faces:details });
+      if (i%4 === 2 && world.environment.wetness > .23) {
+        const d = s + step * .11;
+        const lane = (random() - .5) * width * 1.44;
+        const length = step * (.49 + random() * .56);
+        const half = .28 + random() * .65;
+        const q = (z,x) => roadPoint(course,d + length*z,lane + half*x,.026);
+        const edge = [[0,-.33],[.24,-.98],[.57,-.89],[.89,-.61],[1,.11],[.69,.74],[.37,.93],[.06,.54]];
+        surface.push({ center, faces:[{ points:edge.map(([z,x])=>q(z,x)), puddle:true }] });
+      }
     }
     if (s < 1.15 || s > course.length-step*1.3) {
       for (let square = 0; square < 12; square++) {
@@ -279,10 +296,10 @@ function makeCourseArt(course, world) {
     center:[mark.x,mark.y+3,mark.z],
     faces:mark.faces.map(face=>({points:transformFace(face.points,mark.x,mark.y,mark.z,mark.yaw),custom:"#"+face.paint})),
   }));
-  return { tiles, props, pads, gates, signs, labels, structures, warnings };
+  return { tiles, surface, props, pads, gates, signs, labels, structures, warnings };
 }
 
-function drawSkies(ctx, width, height, camera, project, env, theme, variant, time, scenery, calm) {
+function drawSkies(ctx, width, height, camera, project, env, variant, time, scenery, calm) {
   const h = limit(height / 2 + project.f*project.forward[1]/Math.max(.22,Math.hypot(project.forward[0],project.forward[2])), -height*.7, height*1.7);
   const yaw = Math.atan2(project.forward[0],project.forward[2]);
   const gradient=ctx.createLinearGradient(0,0,0,Math.max(1,limit(h+height*.24,1,height)));
@@ -305,7 +322,7 @@ function drawSkies(ctx, width, height, camera, project, env, theme, variant, tim
     ctx.arc(x,y,height*(variant==="lantern"?.025:.045),0,TAU);
     ctx.fill();
   }
-  scenery.drawAtmosphere(ctx,width,height,h,project.f,yaw,env,theme,variant,calm?0:time);
+  scenery.drawAtmosphere(ctx,width,height,h,project.f,yaw,env,variant,calm?0:time);
   const floorTop=limit(h+height*.28,0,height-1);
   const floor=ctx.createLinearGradient(0,floorTop,0,height);
   floor.addColorStop(0,"transparent");
@@ -399,16 +416,22 @@ function drawGem(ctx, point, scale, time, index, special) {
   polygon(ctx,[[x,y-r],[x+r*.12,y],[lx,y]],"#fff7df");
 }
 
-function drawKart(ctx, point, scale, vehicle, camera, models, surroundings, time, reducedMotion, view) {
+function drawKart(ctx, point, scale, vehicle, camera, models, surroundings, time, reducedMotion, view, light) {
   const [x,y]=point;
   const roadHeight=Number.isFinite(vehicle.roadY)?vehicle.roadY:vehicle.y;
   const foot=view.vector([vehicle.x,roadHeight+.018,vehicle.z]);
   const shadow=foot[2]>.3?view.plane(foot):point;
-  const wheel=scale*.64;
   ctx.save();
   if (vehicle.ghost) ctx.globalAlpha=.49+Math.sin(time*2)*.09;
-  ctx.fillStyle="rgba(12,26,22,.35)";
-  ctx.beginPath();ctx.ellipse(...shadow,wheel*1.43,wheel*.48,-(camera.roll||0),0,TAU);ctx.fill();
+  const wet=surroundings.wetness||0;
+  light.contactShade(ctx,...shadow,scale,camera.roll||0,vehicle.airborne,vehicle.ghost ? .55 : 1);
+  if(!vehicle.ghost&&scale>44&&!vehicle.airborne&&camera.shot!=="chase"){
+    const yaw=vehicle.yaw||0, sin=Math.sin(yaw),cos=Math.cos(yaw);
+    for(const front of [-1.09,1.13]) for(const side of [-.92,.92]){
+      const tire=view.vector([vehicle.x+sin*front+cos*side,roadHeight+.015,vehicle.z+cos*front-sin*side]);
+      if(tire[2]>.5) light.contactShade(ctx,...view.plane(tire),scale*.39,camera.roll||0,0,.69);
+    }
+  }
   if (!reducedMotion && (vehicle.boost || vehicle.drift || vehicle.offroad)) {
     const heated=vehicle.boost>0;
     for(let i=0;i<(heated?13:9);i++) {
@@ -424,7 +447,8 @@ function drawKart(ctx, point, scale, vehicle, camera, models, surroundings, time
   }
   ctx.translate(x,y);
   ctx.rotate((vehicle.roll||0)*.40-(camera.roll||0));
-  const rendered=models.draw(ctx,vehicle,camera,scale,surroundings,time,reducedMotion);
+  const rendered=models.draw(ctx,vehicle,camera,scale,surroundings,time,reducedMotion,
+    !vehicle.ghost&&scale>15&&wet>.20&&Math.abs(vehicle.airborne||0)<.25 ? wet : 0);
   ctx.restore();
   return rendered;
 }
@@ -448,6 +472,7 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
   if(!ctx) throw new Error("Canvas graphics are unavailable.");
   const models=createSoftwareModels(canvas);
   const scenery=createSoftwareScenery(canvas);
+  const light=createSurfaceLight(canvas);
   const stats={width:canvas.width,height:canvas.height,drawCalls:0,triangles:0,frameMs:0,contextLost:false};
   let world, course, environment, art, scheme, shades, gone=false;
 
@@ -458,10 +483,13 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
     environment=world.environment;
     const base=themes[course.theme || course.id] || themes.moss;
     const ground=course.art?.ground || base.land;
-    const road=course.art?.road || base.road;
-    scheme={...base,land:blendHex(base.land,ground,.68),grass:blendHex(base.grass,ground,.80),
-      hill:blendHex(base.hill,ground,.54),road,paving:blendHex(road,"#abad9f",.075),
-      rubber:blendHex(road,"#1d2728",.20),roadLight:blendHex(road,"#b5b7af",.12),
+    const verge=world.palette?.verge?.length===3 ? "#" + world.palette.verge.map(n=>Math.round(n*255).toString(16).padStart(2,"0")).join("") : base.grass;
+    const wet=environment.wetness||0;
+    const road=blendHex(course.art?.road || base.road,"#242b2e",.30+wet*.19);
+    scheme={...base,land:blendHex(base.land,ground,.68),grass:blendHex(verge,ground,.45),
+      hill:blendHex(base.hill,ground,.54),road,
+      rubber:blendHex(road,"#22272b",.16),rubberDark:blendHex(road,"#111b1c",.29),
+      roadDash:blendHex(road,"#e8e3bc",.39),roadLight:blendHex(road,"#b5b7af",.12),
       stripe:blendHex(base.stripe,course.art?.accent || base.stripe,.23)};
     shades = colorTable(scheme,environment);
     art=makeCourseArt(course,world);
@@ -482,6 +510,11 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
     return true;
   }
 
+  function setQuality(value) {
+    quality=["auto","low","high"].includes(value) ? value : "auto";
+    models.setQuality(quality);
+  }
+
   function draw({camera,vehicles=[],time=0,boost=0,effects}={}) {
     if(gone||!art||!camera) return false;
     const started=performance.now();
@@ -490,17 +523,24 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
     const view=projection(camera,w,h);
     const focal = view.f;
     const sheets=[];
+    const asphalt=[];
+    const low=quality==="low";
+    const calm=reducedMotion || effects?.calm;
     stats.drawCalls=0;
     stats.triangles=0;
     models.beginFrame();
-    drawSkies(ctx,w,h,camera,view,environment,scheme,course.theme || course.id,time,scenery,reducedMotion || effects?.calm);
+    drawSkies(ctx,w,h,camera,view,environment,course.id,time,scenery,calm);
     const enqueue=(center,type,data,radius)=>{
+      const far=type===7?Math.min(environment.fogFar,low?62:104):environment.fogFar;
+      const reach=far+radius+8;
+      if((center[0]-camera.x)**2+(center[2]-camera.z)**2>reach*reach)return;
       const p=view.vector(center);
-      if(p[2]<-radius||p[2]>environment.fogFar+radius)return;
+      if(p[2]<-radius||p[2]>far+radius)return;
       if(Math.abs(p[0])>p[2]*w/(2*focal)+radius||Math.abs(p[1])>p[2]*h/(2*focal)+radius)return;
       sheets.push({ depth:p[2],p,type,data });
     };
     for(const tile of art.tiles)enqueue(tile.center,0,tile.faces,16);
+    for(const detail of art.surface)enqueue(detail.center,7,detail.faces,course.halfWidth+2);
     for(const pad of art.pads)enqueue(pad.center,6,pad.faces,6);
     for(const warning of art.warnings)enqueue(warning.center,6,warning.faces,course.halfWidth+3);
     for(const face of art.gates) {
@@ -525,12 +565,18 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
       if(camera.hidePlayer&&vehicle.id===0&&!vehicle.ghost) continue;
       enqueue([vehicle.x,vehicle.y,vehicle.z],4,vehicle,2.6);
     }
-    const pass = type => type === 0 ? 0 : type === 6 ? 1 : 2;
+    const pass = type => type === 0 ? 0 : type === 7 ? 1 : type === 6 ? 2 : 3;
     sheets.sort((a,b)=>pass(a.type)-pass(b.type) || b.depth-a.depth || a.type-b.type);
+    let surfacePainted=false;
     for(const {depth,p,type,data} of sheets){
+      if(type!==0&&!surfacePainted) {
+        const horizon=h*.5+focal*view.forward[1]/Math.max(.22,Math.hypot(view.forward[0],view.forward[2]));
+        light.roadway(ctx,asphalt,w,h,horizon,environment,camera.trackDistance,low);
+        surfacePainted=true;
+      }
       const fog=limit(Math.floor(Math.max(0,depth-22)/(environment.fogFar-28)*14),0,14);
       const tone=name=>shades[name][fog];
-      if (type===0 || type===5 || type===6){
+      if (type===0 || type===5 || type===6 || type===7){
         const faces=type===5 ? data.map(face=>{
           const vectors=face.points.map(view.vector);
           return {face,vectors,depth:vectors.reduce((n,v)=>n+v[2],0)/vectors.length};
@@ -540,7 +586,10 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
           if(clipped.length<3) continue;
           const points=clipped.map(view.plane);
           if(points.every(v=>v[0]<-1)||points.every(v=>v[0]>w+1)||points.every(v=>v[1]<-1)||points.every(v=>v[1]>h+1))continue;
-          polygon(ctx,points,face.custom ? blendHex(face.custom,scheme.peak,fog*.036) : tone(face.paint));
+          if(face.asphalt)asphalt.push(points);
+          if(face.puddle){
+            if(!low)puddle(ctx,points,environment,fog);
+          } else polygon(ctx,points,face.custom ? blendHex(face.custom,scheme.peak,fog*.036) : tone(face.paint));
           stats.drawCalls++;
           stats.triangles+=points.length-2;
         }
@@ -551,7 +600,7 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
       const scale=focal/p[2];
       if(type===1) {
         if(data.size*scale<3)continue;
-        prop(ctx,data,point,scale,tone,fog,scenery,course,name=>shades[name][0]);
+        prop(ctx,data,point,scale,tone,fog,scenery,course,(name,band)=>shades[name][band]);
       } else if(type===2){
         const a=view.vector(data.a), b=view.vector(data.b);
         if(a[2]<1 || b[2]<1 || view.forward[1]>.35)continue;
@@ -566,10 +615,10 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
         paintedSign(ctx,data.text,maxWidth,Math.max(6,scale*.65));
         ctx.restore();
       } else if(type===3) drawGem(ctx,point,scale,time,data.index,data.special);
-      else drawKart(ctx,point,scale,data,camera,models,environment,time,reducedMotion || effects?.calm,view);
+      else drawKart(ctx,point,scale,data,camera,models,environment,time,calm,view,light);
       stats.drawCalls++;
     }
-    if (!reducedMotion && boost>.1) {
+    if (!calm && boost>.1) {
       ctx.strokeStyle="rgba(226,255,222,.55)";
       ctx.lineWidth=Math.max(1.1,h*.0018);
       for(let i=0;i<23;i++){
@@ -583,11 +632,15 @@ export function createSoftwareRenderer(canvas, { quality = "auto", reducedMotion
       }
       ctx.globalAlpha=1;
     }
+    const sun=view.vector([camera.x+environment.sunDirection[0]*160,camera.y+environment.sunDirection[1]*160,camera.z+environment.sunDirection[2]*160]);
+    if(!low && sun[2]>7) lightShafts(ctx,w,h,[...view.plane(sun),sun[2]],environment,course.theme);
+    filmWeather(ctx,w,h,environment,time,vehicles[0]?.speed||0,calm,low);
     stats.frameMs=performance.now()-started;
     stats.generatedModelViews=models.generated;
     stats.cachedModelViews=models.cached;
     return true;
   }
 
-  return { setWorld, setVehicles:models.setVehicles, draw, resize, dispose(){ gone=true; art=null; scenery.dispose(); models.dispose(); }, stats };
+  models.setQuality(quality);
+  return { setWorld, setVehicles:models.setVehicles, setQuality, draw, resize, dispose(){ gone=true; art=null; scenery.dispose(); models.dispose(); }, stats };
 }

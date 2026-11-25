@@ -8,6 +8,8 @@ import { createAudio } from "./audio.mjs";
 import { ghostAt, POINTS, profile, stamp } from "./profile.mjs";
 import { createQuizDeck } from "./item-quiz.mjs";
 import { createGamepad } from "./gamepad.mjs";
+import { createTapAction, createPointerOwner } from "./multi-touch.mjs";
+import { createGyroPower } from "./gyro-power.mjs";
 import { noteLocalChange } from "../../../firebase-sync.mjs";
 import { CUPS, cameraLabel, center, driverColors, infrastructure, menu, powerSymbol, quickQuiz, slate, summary, text, updateSoundButton } from "./presentation.mjs";
 
@@ -23,7 +25,7 @@ const KEYS = {
 function readGraphicsPreference() {
   const query = new URLSearchParams(location.search).get("rallyGraphics");
   if (query === "high" || query === "low") return query;
-  return "auto";
+  return null;
 }
 
 function buildMap(course, canvas) {
@@ -88,7 +90,9 @@ export function launch3D(container, ctx, switchToClassic) {
   const director = createDirector();
   const audio = createAudio();
   const pad = createGamepad();
-  const quality = readGraphicsPreference();
+  const gyroPower = createGyroPower();
+  let gyroOn = false;
+  let quality = readGraphicsPreference() || record.settings().quality;
   const scene = document.createElement("section");
   scene.className = "rr3";
   scene.lang = lang;
@@ -121,7 +125,7 @@ export function launch3D(container, ctx, switchToClassic) {
   const stick = find("[data-stick]");
   const stickThumb = stick?.querySelector(".rr3-stick-thumb");
   let stickSteer = 0;
-  let stickPointerId = null;
+  const stickOwner = createPointerOwner();
   const STICK_DEAD = 0.08;
   let controller;
   let controllerDirection = 0;
@@ -160,6 +164,7 @@ export function launch3D(container, ctx, switchToClassic) {
   let loadingCourse = false;
   let result;
   let ranks = [];
+  let lastRank = null;
   let best = false;
   let ghosts = null;
   let samples = [];
@@ -286,9 +291,9 @@ export function launch3D(container, ctx, switchToClassic) {
   }
 
   function resetStick() {
-    if (stickPointerId !== null) {
-      try { stick?.releasePointerCapture(stickPointerId); } catch { }
-      stickPointerId = null;
+    const held = stickOwner.release();
+    if (held !== null) {
+      try { stick?.releasePointerCapture(held); } catch { }
     }
     stickSteer = 0;
     if (stickThumb) stickThumb.style.transform = "";
@@ -302,22 +307,24 @@ export function launch3D(container, ctx, switchToClassic) {
   function stickStart(event) {
     // The stick also works during the countdown (controls are only visible
     // in run/grid), so the kart can leave the line already steering.
-    if (!stick || (!driving() && phase !== "grid") || stickPointerId !== null) return;
+    if (!stick || (!driving() && phase !== "grid") || stickOwner.held !== null) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
-    stickPointerId = event.pointerId;
+    stickOwner.claim(event.pointerId);
     try { stick.setPointerCapture(event.pointerId); } catch { }
+    // Grabbing the stick (re)defines the gyroscope rest posture.
+    gyroPower.reset();
     updateStick(event);
   }
 
   function stickMove(event) {
-    if (event.pointerId !== stickPointerId) return;
+    if (!stickOwner.owns(event.pointerId)) return;
     event.preventDefault();
     updateStick(event);
   }
 
   function stickEnd(event) {
-    if (event.pointerId !== stickPointerId) return;
+    if (!stickOwner.owns(event.pointerId)) return;
     resetStick();
   }
 
@@ -395,7 +402,7 @@ export function launch3D(container, ctx, switchToClassic) {
       panel.innerHTML = slate(lang, course, mode, cupIndex, cupChoice);
       if (focus) setFocus("[data-act=skip]");
     } else if (phase === "pause" || phase === "settings" || phase === "lost") {
-      panel.innerHTML = center(lang, phase, record.settings(), settingsBack === "pause");
+      panel.innerHTML = center(lang, phase, { ...record.settings(), quality }, settingsBack === "pause");
       if (focus) setFocus("[data-panel] .rr3-main");
     } else if (phase === "quiz" && localQuiz) {
       panel.innerHTML = quickQuiz(lang, localQuiz, POWER_INFO[run.player.power?.kind]);
@@ -417,7 +424,7 @@ export function launch3D(container, ctx, switchToClassic) {
     // A stick held through the countdown keeps steering across the GO:
     // resetting it there would straighten a kart the player is already
     // turning (and drop all later moves for that finger).
-    const keepStick = phase === "grid" && next === "run" && stickPointerId !== null;
+    const keepStick = phase === "grid" && next === "run" && stickOwner.held !== null;
     phase = next;
     phaseTime = elapsed;
     accumulator = 0;
@@ -464,9 +471,28 @@ export function launch3D(container, ctx, switchToClassic) {
     selectCourse(COURSES.findIndex(track => track.id === CUPS[cupChoice].ids[0]));
   }
 
+  // Gyroscope shortcut for the power button (extra, never a requirement):
+  // on iOS 13+ the permission must come from a user gesture, so it rides on
+  // the same tap that starts the race. Denied or missing sensor: the button
+  // keeps working exactly as before.
+  function enableGyro() {
+    if (gyroOn) return;
+    gyroOn = true;
+    scene.dataset.gyro = "on";
+  }
+  async function requestGyroPermission() {
+    if (typeof DeviceOrientationEvent === "undefined") return;
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      try {
+        if ((await DeviceOrientationEvent.requestPermission()) === "granted") enableGyro();
+      } catch { /* denied or unavailable: the button still works */ }
+    } else enableGyro();
+  }
+
   async function startRace(skip = false) {
     if (gone || loadingCourse) return;
     if (record.settings().sound) void audio.unlock();
+    void requestGyroPermission();
     if (currentWorld?.course !== course) {
       loadingCourse = true;
       const pending = document.createElement("div");
@@ -503,6 +529,7 @@ export function launch3D(container, ctx, switchToClassic) {
     lastBoostPress = -10;
     best = false;
     ranks = [];
+    lastRank = null;
     const quick = skip || reduced();
     phaseTo(quick ? "grid" : "intro", 0, !quick);
     if (quick) audio.play("countdown", 3);
@@ -650,6 +677,7 @@ export function launch3D(container, ctx, switchToClassic) {
         else if (event.type === "powerUse") {
           const name = POWER_INFO[event.kind]?.[lang];
           if (name) say(name + (event.level > 1 ? " II" : ""),1.25);
+          director.pulse("power");
         } else if (event.type === "hazard" && !event.blocked) {
           trauma = Math.min(1, trauma + .3);
           const kind = { slick: t("Slippery surface","พื้นลื่น"), hurdle: t("Hop over low gates","กระโดดข้ามรั้วเตี้ย"), sweeper: t("Watch the moving gate","ระวังประตูเคลื่อนที่"), slalom: t("Dodge the barriers","หลบสิ่งกีดขวาง") }[event.kind];
@@ -657,12 +685,13 @@ export function launch3D(container, ctx, switchToClassic) {
         }
       } else if (["boost","pickup","hit","offroad","bump"].includes(event.type)) {
         audio.play(event.type,event);
-        if (event.type === "hit") trauma = Math.min(1, trauma + .5 * (event.strength || .5));
+        if (event.type === "boost") director.pulse("turbo");
+        if (event.type === "hit") { trauma = Math.min(1, trauma + .5 * (event.strength || .5)); director.pulse("hit", event.strength || .5); }
         else if (event.type === "offroad") {
           trauma = Math.min(1, trauma + .25);
           say(t("Off the track!", "ออกนอกถนน!"), 1.4);
         }
-        else if (event.type === "bump") trauma = Math.min(1, trauma + .35 * (event.strength || .5));
+        else if (event.type === "bump") { trauma = Math.min(1, trauma + .35 * (event.strength || .5)); director.pulse("hit", event.strength || .5); }
       }
     }
   }
@@ -711,9 +740,15 @@ export function launch3D(container, ctx, switchToClassic) {
       camera.roll = (camera.roll || 0) + (Math.random() * 2 - 1) * .014 * shake;
     }
     if (camera.shot === "bumper") camera.hidePlayer = true;
+    // The low pre-race dolly has its own clean framing. The grid reveal brings the other drivers back.
+    if (camera.shot === "hero") vehicles.length = 1;
     if (scene.dataset.shot !== camera.shot) {
       scene.dataset.shot = camera.shot;
-      if (phase === "intro") audio.play("cinematic", camera.shot);
+      if (phase === "intro") {
+        audio.play("cinematic", camera.shot);
+        const place = find("[data-landmark]");
+        if (place) place.textContent = camera.landmark?.name?.[lang] || "";
+      }
     }
     if (camera.shot === "lobby" && dimensions?.width < 590) camera.ty -= .30;
     const lap = Math.max(0, Math.floor(run.player.s / course.length));
@@ -730,6 +765,9 @@ export function launch3D(container, ctx, switchToClassic) {
     });
     if (userHudDue()) {
       values.rank.textContent = run.player.rank + " / " + run.racers.length;
+      // A position change sweeps the drone camera sideways (gain = +, loss = -).
+      if (driving() && lastRank !== null && run.player.rank !== lastRank) director.pulse("overtake", lastRank - run.player.rank);
+      lastRank = run.player.rank;
       values.lap.textContent = run.player.lap + " / " + run.laps;
       values.time.textContent = stamp(run.time);
       values.speed.textContent = Math.round(run.player.speed * 3.6);
@@ -944,13 +982,13 @@ export function launch3D(container, ctx, switchToClassic) {
       if (mode === "cup") resetCup();
       void startRace();
     } else if (action === "skip" && phase === "intro") toGrid();
-    else if (action === "pause") pauseGame();
+    else if (action === "pause") pauseTap.click(event);
     else if (action === "resume" && phase === "pause") resumeGame();
-    else if (action === "camera") cycleCamera();
+    else if (action === "camera") cameraTap.click(event);
     else if (action === "restart" && phase === "pause") startRace(true);
     else if (action === "lobby") lobby();
-    else if (action === "power") firePower();
-    else if (action === "power-quiz") upgradeQuiz();
+    else if (action === "power") powerTap.click(event);
+    else if (action === "power-quiz") powerQuizTap.click(event);
     else if (action === "quiz-answer") answerQuiz(Number(button.dataset.answer));
     else if (action === "quiz-skip" || action === "quiz-resume") closeQuiz();
     else if (action === "retry" && phase === "result") {
@@ -983,6 +1021,14 @@ export function launch3D(container, ctx, switchToClassic) {
     const value = control.value;
     record.setSetting(name, name === "sound" ? value === "on" : value);
     if (name === "sound" && value === "on") void audio.unlock();
+    if (name === "quality" && quality !== record.settings().quality) {
+      quality = record.settings().quality;
+      scaleDown = 1;
+      frameCost = 16;
+      perfClock = 0;
+      renderer.setQuality?.(quality);
+      resize();
+    }
     scene.dataset.calm = String(reduced());
     refreshButtons();
     callFrame();
@@ -1102,6 +1148,25 @@ export function launch3D(container, ctx, switchToClassic) {
     stick.addEventListener("pointermove", stickMove, options);
     for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) stick.addEventListener(type, stickEnd, options);
   }
+  // In-race action buttons fire on pointerdown, not on click: a second finger
+  // down while the stick is held often never produces a click, so the power
+  // button used to go dead until the stick was released. Click stays only as
+  // the keyboard fallback (see handleClick).
+  const powerTap = createTapAction(() => firePower());
+  const powerQuizTap = createTapAction(() => upgradeQuiz());
+  const cameraTap = createTapAction(() => cycleCamera());
+  const pauseTap = createTapAction(() => pauseGame());
+  if (powerUse) powerUse.addEventListener("pointerdown", event => { if (!powerUse.disabled) powerTap.down(event); }, options);
+  if (powerQuizButton) powerQuizButton.addEventListener("pointerdown", event => { if (!powerQuizButton.disabled) powerQuizTap.down(event); }, options);
+  if (toolbar.camera) toolbar.camera.addEventListener("pointerdown", event => { if (!toolbar.camera.hidden) cameraTap.down(event); }, options);
+  if (toolbar.pause) toolbar.pause.addEventListener("pointerdown", event => { if (!toolbar.pause.hidden) pauseTap.down(event); }, options);
+  // Gyroscope tilt fires the power without letting go of the stick. The
+  // detector calibrates itself on the first sample of a race; on a desktop
+  // (no sensor) this listener simply never fires.
+  window.addEventListener("deviceorientation", event => {
+    if (!gyroOn || !driving()) return;
+    if (gyroPower.update({ beta: event.beta, gamma: event.gamma })) firePower();
+  }, options);
   // A standard keyboard button activation still provides a momentary turbo.
   turbo.addEventListener("click", event => {
     if (event.detail === 0 && driving()) boostPulse = true;

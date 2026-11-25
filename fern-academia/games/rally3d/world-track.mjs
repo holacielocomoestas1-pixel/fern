@@ -1,4 +1,4 @@
-import { ChunkMesh, box, flatDisc, mix, rgb, tint, tube, blend } from "./world-geometry.mjs";
+import { ChunkMesh, box, flatDisc, mix, rgb, tint, tube, blend, unit } from "./world-geometry.mjs";
 
 const UP = [0, 1, 0];
 const white = rgb("f1eee0");
@@ -9,10 +9,14 @@ export function roadPoint(course, s, offset, lift = 0) {
 }
 
 function ribbon(mesh, course, start, end, from, to, lift, color) {
-  mesh.quad(
-    roadPoint(course, start, from, lift), roadPoint(course, end, from, lift),
-    roadPoint(course, end, to, lift), roadPoint(course, start, to, lift), color,
-  );
+  const normal = f => {
+    const bank = Math.tan(f.bank || 0), dy = f.dy || 0;
+    return unit([dy * f.rz - f.dz * bank, f.dz * f.rx - f.dx * f.rz, f.dx * bank - dy * f.rx]);
+  };
+  const before = normal(course.frame(start));
+  const after = normal(course.frame(end));
+  mesh.quad(roadPoint(course,start,from,lift),roadPoint(course,end,from,lift),roadPoint(course,end,to,lift),
+    roadPoint(course,start,to,lift),color,undefined,undefined,[before,after,after,before]);
 }
 
 function wall(mesh, course, start, end, offset, top, bottom, color, flip) {
@@ -32,7 +36,7 @@ export function inBridge(course, s) {
 
 function trackStructure(road, hard, glow, course, p, random) {
   const width = course.halfWidth;
-  const count = Math.ceil(course.length / 3.1);
+  const count = Math.ceil(course.length / 3.45);
   const segment = course.length / count;
   for (let i = 0; i < count; i++) {
     const start = i * segment;
@@ -40,8 +44,13 @@ function trackStructure(road, hard, glow, course, p, random) {
     const band = .996 + .008 * Math.sin(i * .73) + random() * .007;
     const onBridge = inBridge(course, start);
     const paving = onBridge ? p.bridge : p.road;
-    ribbon(road, course, start, end, -width, width, 0, tint(paving, band));
-    ribbon(road, course, start, end, -width * .72, width * .72, .006, tint(paving, band * 1.016));
+    const strip = onBridge ? 1 : .77;
+    if (onBridge) ribbon(road, course, start, end, -width, width, 0, tint(paving,band));
+    else {
+      ribbon(road, course, start, end, -width, -width*strip, 0, tint(paving,band*.97));
+      ribbon(road, course, start, end, -width*strip, width*strip, 0, tint(paving,band));
+      ribbon(road, course, start, end, width*strip, width, 0, tint(paving,band*.97));
+    }
     for (const side of [-1, 1]) {
       const edge = side * width;
       const outside = side * (width + (onBridge ? .95 : 1.68));

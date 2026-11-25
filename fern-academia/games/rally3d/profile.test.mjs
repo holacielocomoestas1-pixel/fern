@@ -16,12 +16,26 @@ test("tour keeps previous controls and sound, with a separate record book for th
   });
   const db = storage({ "fern-rally-3d-v1": oldData });
   const p = profile(db);
-  assert.deepEqual(p.settings(), { sound: false, motion: "calm", difficulty: "pro" });
+  assert.deepEqual(p.settings(), { sound: false, motion: "calm", difficulty: "pro", quality: "auto" });
   assert.equal(p.best("moss", "trial"), undefined);
   assert.equal(p.ghost("moss"), null);
   p.setSetting("sound", true);
   assert.equal(db.getItem("fern-rally-3d-v1"), oldData);
   assert.equal(profile(db).settings().sound, true);
+});
+
+test("visual quality defaults to auto, keeps valid values and drops invalid ones", () => {
+  const db = storage();
+  const p = profile(db);
+  assert.equal(p.settings().quality, "auto");
+  p.setSetting("quality", "high");
+  assert.equal(profile(db).settings().quality, "high");
+  p.setSetting("quality", "low");
+  assert.equal(profile(db).settings().quality, "low");
+  p.setSetting("quality", "ultra");
+  assert.equal(profile(db).settings().quality, "low");
+  const dirty = storage({ "fern-rally-touring-v2": JSON.stringify({ settings: { quality: "potato" } }) });
+  assert.equal(profile(dirty).settings().quality, "auto");
 });
 
 test("all ten time trials persist independent bests and ghosts and merge writes from other instances", () => {

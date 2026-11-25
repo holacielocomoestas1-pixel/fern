@@ -4,6 +4,7 @@ import {
 } from "./render-shaders.mjs";
 import { forVisibleFixtures } from "./world.mjs";
 import { fixtures, fixtureMesh } from "./world-fixtures.mjs";
+import { allocateSunShadow, depthVertex, depthFragment, lightMatrix } from "./sun-shadow.mjs";
 
 const TAU = Math.PI * 2;
 const WHITE = [1, 1, 1];
@@ -28,6 +29,7 @@ const LAND = {
   sunDirection: [0.30, 0.49, -0.68],
   fogNear: 42, fogFar: 210, ambient: 0.69, clouds: .46, stars: 0,
   horizon: { height: .14, ruggedness: .38, forest: .75, aurora: 0, seed: 2.7 },
+  wetness: .32, exposure: 1, timeOfDay: .34,
 };
 
 function makeProgram(gl, vs, fs, attrs, names) {
@@ -84,6 +86,32 @@ function crystalMesh() {
   return { positions, normals, colors, emissive: .52, roughness: .18 };
 }
 
+function kartShadowProxy() {
+  const positions = [];
+  function ellipsoid(x, y, z, rx, ry, rz) {
+    const sides = 10, stacks = 6;
+    const point = (i, j) => {
+      const latitude = Math.PI * i / stacks;
+      const longitude = TAU * j / sides;
+      return [x + rx * Math.sin(latitude) * Math.cos(longitude),
+        y + ry * Math.cos(latitude),
+        z + rz * Math.sin(latitude) * Math.sin(longitude)];
+    };
+    for (let i = 0; i < stacks; i++) for (let j = 0; j < sides; j++) {
+      const a = point(i, j), b = point(i + 1, j), c = point(i + 1, j + 1), d = point(i, j + 1);
+      positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+  }
+  ellipsoid(0, .50, .05, .82, .31, 1.54);
+  ellipsoid(0, 1.13, -.43, .46, .63, .42);
+  ellipsoid(0, 1.82, -.45, .55, .47, .45);
+  for (const side of [-.89, .89]) {
+    ellipsoid(side, .34, -1.05, .23, .34, .34);
+    ellipsoid(side, .34, 1.1, .23, .34, .34);
+  }
+  return { positions };
+}
+
 function batch(maxQuads) {
   return { data: new Float32Array(maxQuads * 54), count: 0 };
 }
@@ -126,14 +154,22 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
   let sunDirection = unit(...LAND.sunDirection);
   let disposed = false;
   let timeBefore = null;
+  let playerLight = null;
+  let shadow = null;
+  let shadowProgram = null;
+  let shadowSize = 0;
+  let shadowReady = false;
   const spins = new Map();
   const eye = new Float32Array(3);
   const bodyMatrix = new Float32Array(16);
   const modelMatrix = new Float32Array(16);
   const wheelMatrix = new Float32Array(16);
+  const sunMatrix = new Float32Array(16);
+  const grade = new Float32Array(4);
   const identity = transform(new Float32Array(16), 0, 0, 0);
   const maxSize = Math.min(4096, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096);
-  const stats = { width: canvas.width, height: canvas.height, drawCalls: 0, triangles: 0, frameMs: 0, contextLost: false };
+  const stats = { width: canvas.width, height: canvas.height, drawCalls: 0, triangles: 0,
+    shadowTriangles: 0, shadowResolution: 0, frameMs: 0, contextLost: false };
   const effectsBatch = batch(360);
   let drawable = true;
 
@@ -225,6 +261,7 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
       selected = next.map(model => ({
         body: model.body.map(load),
         wheel: model.wheel ? load(model.wheel) : null,
+        wheelMetal: model.wheelMetal ? load(model.wheelMetal) : null,
         wheelOffsets: model.wheelOffsets || [],
       }));
     } catch (error) {
@@ -234,21 +271,24 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     for (const model of models) {
       retire(model.body);
       if (model.wheel) release(model.wheel.buffer);
+      if (model.wheelMetal) release(model.wheelMetal.buffer);
     }
     models = selected;
     spins.clear();
     timeBefore = null;
   }
 
-  let mainProgram, skyProgram, effectProgram, streakProgram, skyBuffer, effectsBuffer, crystal;
+  let mainProgram, skyProgram, effectProgram, streakProgram, skyBuffer, effectsBuffer, crystal, shadowProxy;
   try {
     mainProgram = addProgram(meshVertex, meshFragment, ["aPosition", "aNormal", "aColor"], [
       "uViewProjection", "uModel", "uEye", "uSunDirection", "uSunColor", "uFogColor", "uFogRange",
       "uAmbient", "uTime", "uEmissive", "uRoughness", "uOpacity", "uSurface",
+      "uSkyTop", "uSkyBottom", "uGrade", "uCar", "uCarHeading", "uLightMatrix", "uShadowMap", "uShadowTexel", "uPortrait",
     ]);
     skyProgram = addProgram(screenVertex, skyFragment, ["aPosition"], [
       "uForward", "uRight", "uUp", "uSkyTop", "uSkyBottom", "uSunDirection", "uSunColor",
       "uAspect", "uTanHalf", "uTime", "uClouds", "uStars", "uFogColor", "uHorizon", "uHorizonSeed",
+      "uGrade",
     ]);
     effectProgram = addProgram(effectVertex, effectFragment, ["aPosition", "aUv", "aColor"], ["uViewProjection"]);
     if (!reducedMotion) streakProgram = addProgram(screenVertex, streakFragment, ["aPosition"], ["uPower", "uTime", "uAspect"]);
@@ -261,6 +301,7 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
       }));
     }
     crystal = upload(crystalMesh());
+    shadowProxy = upload(kartShadowProxy());
     gl.enableVertexAttribArray(0);
     gl.disable(gl.CULL_FACE);
     gl.depthFunc(gl.LEQUAL);
@@ -292,6 +333,94 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     stats.triangles += count / 3;
   }
 
+  function setQuality(next) {
+    quality = next === "high" || next === "low" ? next : "auto";
+  }
+
+  function updateShadow() {
+    const requested = quality === "low" ? 0 : Math.min(quality === "high" ? 768 : 512, maxSize);
+    if (requested === shadowSize) return;
+    shadowSize = requested;
+    shadow?.release();
+    shadow = requested >= 128 ? allocateSunShadow(gl, requested) : null;
+    if (shadow && !shadowProgram) {
+      try {
+        shadowProgram = addProgram(depthVertex, depthFragment, ["aPosition"], ["uLightMatrix", "uModel"]);
+      } catch {
+        shadow.release();
+        shadow = null;
+      }
+    }
+    stats.shadowResolution = shadow?.size ?? 0;
+  }
+
+  function castMesh(mesh, matrix) {
+    gl.uniformMatrix4fv(shadowProgram.u.uModel, false, matrix);
+    gl.bindBuffer(array, mesh.buffer);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 36, 0);
+    triangles(mesh.count);
+  }
+
+  function renderSunShadow(camera, vehicles) {
+    shadowReady = false;
+    updateShadow();
+    if (!shadow || !playerLight || Math.abs(camera.y - playerLight.y) > 22 || grade[2] > .75) return;
+    const extent = quality === "high" ? 32 : 24;
+    const sin = Math.sin(playerLight.yaw), cos = Math.cos(playerLight.yaw);
+    const focus = [playerLight.x + sin * 5, playerLight.y, playerLight.z + cos * 5];
+    lightMatrix(sunMatrix, focus, sunDirection, extent, shadow.size);
+    // A caster may be up-sun of the visible road. Test its light-space x/y
+    // bounds rather than clipping against the viewer's camera.
+    const xAxis = [sunMatrix[0], sunMatrix[4], sunMatrix[8]];
+    const yAxis = [sunMatrix[1], sunMatrix[5], sunMatrix[9]];
+    const coordinate = (center, axis, offset) => center[0] * axis[0] + center[1] * axis[1] + center[2] * axis[2] + offset;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, shadow.framebuffer);
+    gl.viewport(0, 0, shadow.size, shadow.size);
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    gl.depthMask(true);
+    gl.clearColor(1, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.useProgram(shadowProgram.handle);
+    gl.disableVertexAttribArray(1);
+    gl.disableVertexAttribArray(2);
+    gl.uniformMatrix4fv(shadowProgram.u.uLightMatrix, false, sunMatrix);
+    const trianglesBefore = stats.triangles;
+    for (const mesh of worldMeshes) {
+      if (mesh.surface === 1 || mesh.surface === 2 || mesh.surface === 3 || mesh.emissive > .26) continue;
+      const bounds = mesh.bounds;
+      if (!bounds) continue;
+      const fringe = bounds.radius / extent;
+      if (fringe > 2.1) continue;
+      if (Math.abs(coordinate(bounds.center, xAxis, sunMatrix[12])) > 1 + fringe ||
+          Math.abs(coordinate(bounds.center, yAxis, sunMatrix[13])) > 1 + fringe) continue;
+      if (stats.triangles - trianglesBefore > (quality === "high" ? 72_000 : 36_000)) break;
+      castMesh(mesh, identity);
+    }
+    for (const car of vehicles) {
+      if (car.ghost || Math.hypot(car.x - focus[0], car.z - focus[2]) > extent + 13) continue;
+      const model = models[(car.model ?? car.id) % models.length] || models[0];
+      if (!model) continue;
+      transform(bodyMatrix, car.x, car.y, car.z, car.yaw, car.roll || 0, car.pitch || 0);
+      const close = car.id === 0 && Math.hypot(camera.x - car.x, camera.z - car.z) < 21;
+      if (!close) {
+        castMesh(shadowProxy, bodyMatrix);
+        continue;
+      }
+      for (const mesh of model.body) if (mesh.surface === 8 || mesh.surface === 4 || mesh.surface === 5) castMesh(mesh, bodyMatrix);
+      if (!model.wheel) continue;
+      for (const offset of model.wheelOffsets) {
+        wheelTransform(wheelMatrix, bodyMatrix, offset, 0, 0);
+        castMesh(model.wheel, wheelMatrix);
+      }
+    }
+    stats.shadowTriangles = stats.triangles - trianglesBefore;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    shadowReady = true;
+  }
+
   function screen(program) {
     gl.useProgram(program.handle);
     gl.disableVertexAttribArray(1);
@@ -319,6 +448,7 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     const { height, ruggedness, forest, aurora, seed } = env.horizon ?? LAND.horizon;
     gl.uniform4f(u.uHorizon, height, ruggedness, forest, aurora);
     gl.uniform1f(u.uHorizonSeed, seed);
+    gl.uniform4f(u.uGrade, ...grade);
     triangles(3);
   }
 
@@ -338,6 +468,19 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     gl.uniform2f(u.uFogRange, env.fogNear, env.fogFar);
     gl.uniform1f(u.uAmbient, env.ambient);
     gl.uniform1f(u.uTime, reducedMotion ? 0 : time);
+    gl.uniform3fv(u.uSkyTop, env.skyTop);
+    gl.uniform3fv(u.uSkyBottom, env.skyBottom);
+    gl.uniform4f(u.uGrade, ...grade);
+    gl.uniform4f(u.uCar, playerLight?.x ?? 0, playerLight?.y ?? 0, playerLight?.z ?? 0, playerLight ? 1 : 0);
+    gl.uniform2f(u.uCarHeading, Math.sin(playerLight?.yaw ?? 0), Math.cos(playerLight?.yaw ?? 0));
+    gl.uniform1f(u.uPortrait, ["hero", "lobby", "finish-orbit"].includes(camera.shot) ? 1 : 0);
+    gl.uniform1f(u.uShadowTexel, shadowReady ? shadow.texel : 0);
+    if (shadowReady) {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, shadow.texture);
+      gl.uniform1i(u.uShadowMap, 0);
+      gl.uniformMatrix4fv(u.uLightMatrix, false, sunMatrix);
+    }
   }
 
   function drawMesh(mesh, matrix, opacity = 1) {
@@ -441,6 +584,7 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
       const steer = offset[2] > 0 ? clamp(car.steer || 0, -1, 1) * .34 : 0;
       wheelTransform(wheelMatrix, bodyMatrix, offset, steer, spins.get(key));
       drawMesh(chosen.wheel, wheelMatrix, alpha);
+      if (chosen.wheelMetal) drawMesh(chosen.wheelMetal, wheelMatrix, alpha);
     }
   }
 
@@ -545,6 +689,31 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     gl.disable(gl.BLEND);
   }
 
+  function weatherPass(view, camera, time) {
+    const rain = env.weather === "rain";
+    const snow = env.weather === "snow";
+    const ash = env.weather === "ash";
+    if (!(rain || snow || ash)) return;
+    const count = quality === "high" ? 51 : rain ? 34 : 27;
+    const shade = rain ? [.67, .77, .92] : snow ? [.82, .91, 1.] : [.94, .61, .39];
+    for (let i = 0; i < count; i++) {
+      const scatter = Math.sin(i * 87.322 + 3.37) * .5;
+      const across = Math.sin(i * 3.581 + 2.10) * .77;
+      const drop = ((i * .73213 + time * (rain ? 2.22 : snow ? .42 : -.28) * (.87 + scatter * .33)) % 1 + 1) % 1;
+      const far = 1.15 + (i / count) ** 2 * 23.0;
+      const x = camera.x + view.forward[0] * far + view.right[0] * across * far;
+      const y = camera.y + view.forward[1] * far + (1 - 2 * drop) * far * .63;
+      const z = camera.z + view.forward[2] * far + view.right[2] * across * far;
+      const scale = (rain ? .008 : .032) * (1 + i / count);
+      const height = rain ? .06 + far * .031 : scale * .93;
+      const lean = rain ? height * .22 : 0;
+      const alpha = (rain ? .22 : snow ? .32 : .32) * (1 - i / count * .65) *
+        Math.min(1, drop * 12, (1 - drop) * 12);
+      splat(effectsBatch, x, y, z, ...view.right.map(value => value * scale),
+        ...view.up.map((value, axis) => value * height + view.right[axis] * lean), shade, alpha);
+    }
+  }
+
   function draw({ camera, vehicles = [], time = 0, boost, effects } = {}) {
     const start = typeof performance === "undefined" ? 0 : performance.now();
     if (!camera || disposed || gl.isContextLost()) {
@@ -554,10 +723,17 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     if (!drawable || !canvas.width || !canvas.height) return false;
     stats.drawCalls = 0;
     stats.triangles = 0;
+    stats.shadowTriangles = 0;
     const aspect = canvas.width / canvas.height;
     const view = viewFor(camera, aspect, .09, Math.max(258, env.fogFar * 1.62));
     const dt = timeBefore === null ? 0 : clamp(time - timeBefore, 0, .067);
     timeBefore = time;
+    playerLight = vehicles.find(car => car.id === 0 && !car.ghost) ?? null;
+    grade[0] = clamp(env.exposure ?? 1, .72, 1.4);
+    grade[1] = clamp(env.wetness ?? .3, 0, 1);
+    grade[2] = Number.isFinite(env.timeOfDay) ? 1 - clamp(Math.sin((env.timeOfDay - .25) * TAU) * 2 + .44, 0, 1) : 0;
+    grade[3] = quality === "low" ? 0 : env.weather === "mist" || env.weather === "rain" ? .82 : env.weather === "ash" ? .65 : .34;
+    renderSunShadow(camera, vehicles);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
@@ -596,6 +772,8 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     for (const car of visibleCars) powerEffects(car, view, time, calm);
     if (!calm) for (const car of visibleCars) trailsFor(car, view, time);
     fxPass(view, true);
+    if (!calm) weatherPass(view, camera, time);
+    fxPass(view, false);
     const boostPower = boost === true ? 1 : typeof boost === "number" ? clamp(boost, 0, 1) :
       (vehicles[0]?.boost > 0 ? .86 : 0);
     streak(aspect, time, boostPower);
@@ -609,6 +787,8 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     drawable = false;
     for (const buffer of buffers) gl.deleteBuffer(buffer);
     for (const { handle } of programs) gl.deleteProgram(handle);
+    shadow?.release();
+    shadow = null;
     buffers.clear();
     programs.length = 0;
     worldMeshes = [];
@@ -616,5 +796,5 @@ export function createRenderer(canvas, { quality = "auto", reducedMotion = false
     world = null;
   }
 
-  return { setWorld, setVehicles, draw, resize, dispose, stats };
+  return { setWorld, setVehicles, setQuality, draw, resize, dispose, stats };
 }

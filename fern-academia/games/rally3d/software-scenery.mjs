@@ -1,7 +1,7 @@
 import { ridgeElevation, ridgeColor, auroraBand } from "./atmosphere.mjs";
 
 const TAU=2*Math.PI;
-const TYPES=new Set(["pine","palm","blossom","crag","rock","stack"]);
+const TYPES=new Set(["pine","palm","blossom","crag","rock","stack","fern"]);
 const cap=(value,low,high)=>Math.min(high,Math.max(low,value));
 const rgb=color=>`rgb(${color.map(n=>Math.round(n*255)).join(",")})`;
 const rgba=(color,a)=>`rgba(${color.map(n=>Math.round(n*255)).join(",")},${a})`;
@@ -46,35 +46,66 @@ function line(ctx,coords,stroke,width) {
 
 function pine(ctx,r,tone,course) {
   const snow=course==="aurora"||course==="glacier";
-  const lean=(r()-.5)*.16;
-  line(ctx,[[0,0],[lean*.32,-.47],[lean,-1.05]],tone("bark"),.06);
-  line(ctx,[[-.015,-.03],[lean,-.89]],"rgba(245,224,179,.16)",.008);
-  for(let i=0;i<8;i++){
-    const height=-.16-i*.108;
-    const half=(.43*(1-i*.103))*(.86+.22*r());
-    const y=height-.22;
-    const x=lean*(i+1)/8;
-    const outline=[[x,y],[x+half*.24,height-.096],[x+half*.66,height-.033]];
-    for(let j=6;j>=-6;j--){
-      const u=j/6;
-      const span=.57+.43*Math.abs(u);
-      outline.push([x+u*half*(.78+.22*r()),height+Math.sin(j*.88)*.026+(r()-.3)*.043-Math.abs(u)*.031+span*.02]);
+  const lean=(r()-.5)*.16, spread=.41+r()*.09;
+  const rootX=z=>lean*z*z+Math.sin(z*4)*.019;
+  line(ctx,[[0,0],[rootX(.36),-.36],[rootX(.75),-.75],[lean,-1.05]],tone("bark"),.052);
+  line(ctx,[[-.015,-.023],[rootX(.37)-.013,-.37],[rootX(.72)-.008,-.72]],"rgba(238,217,171,.23)",.007);
+  for(let i=0;i<12;i++){
+    const layer=i/12;
+    const z=.13+layer*.87;
+    const x=rootX(z), y=-z;
+    const half=spread*(1-layer)**.81;
+    const branches= i<9 ? 5 : 4;
+    for(let j=0;j<branches;j++){
+      const side=(j+i)%2 ? -1:1;
+      const length=half*(.44+r()*.51);
+      const rise=.019+r()*.056;
+      const drop=r()*.082-.035;
+      const to=[x+side*length,y-rise+drop];
+      const hook=[x+side*length*.59,y-rise*.84-.033];
+      const branch=ctx.createLinearGradient(x,y-.071,to[0]+side*.02,to[1]+.055);
+      branch.addColorStop(0,tone("hill"));branch.addColorStop(.47,tone("leaves"));branch.addColorStop(1,tone("light"));
+      ctx.fillStyle=branch;
+      ctx.beginPath();ctx.moveTo(x-side*.04,y+.016);
+      ctx.quadraticCurveTo(hook[0],hook[1]-.050,to[0],to[1]-.018);
+      ctx.quadraticCurveTo(hook[0]+side*.014,hook[1]+.060,x-side*.02,y+.065);
+      ctx.closePath();ctx.fill();
+      const shoots=i<8?7:5;
+      for(let k=0;k<shoots;k++){
+        const t=(k+.2+r()*.8)/(shoots+.3);
+        const cx=x+(to[0]-x)*t, cy=y+(to[1]-y)*t-Math.sin(t*Math.PI)*.025;
+        const further=side*(.044+r()*.052)*(1-t*.55);
+        const reach=.032+r()*.058;
+        const tip=[cx+further,cy-reach];
+        line(ctx,[[cx,cy+.012],[cx+further*.53,cy-reach*.56],tip],
+          snow&&(k+j)%4===0?"rgba(232,244,243,.71)":(k+j)%4===1?tone("light"):tone("leaves"), .007+r()*.013);
+        if(k%2===1)line(ctx,[[cx,cy],[cx+further,cy+reach*.42]],"rgba(9,42,33,.47)", .006+r()*.007);
+      }
+      if(snow&&(j+i)%2===0)line(ctx,[[x+side*.026,y-.025],hook,to],"rgba(224,242,242,.56)",.016);
     }
-    outline.push([x-half*.67,height-.057],[x-half*.24,height-.12]);
-    const crown=ctx.createLinearGradient(x-half,y,x+half,height+.06);
-    crown.addColorStop(0,tone("light"));
-    crown.addColorStop(.58,tone("leaves"));
-    crown.addColorStop(1,tone("hill"));
-    path(ctx,outline,crown);
-    for(let j=0;j<14;j++){
-      const side=j%2?-1:1;
-      const d=r();
-      const nx=x+side*half*d*.98;
-      const ny=height-.035-.102*(1-d)+r()*.054;
-      line(ctx,[[nx-side*half*.33,ny-.048],[nx,ny+.005],[nx+side*half*.03,ny+.02]],
-        snow&&j%3===0?"rgba(226,241,237,.64)":j%4===0?"rgba(193,221,163,.23)":"rgba(11,42,35,.38)", .006+r()*.007);
+  }
+  line(ctx,[[rootX(.87),-.87],[lean,-1.10]],tone("light"),.0065);
+}
+
+function fern(ctx,r,tone,course){
+  const iced=course==="glacier"||course==="aurora";
+  for(let strand=0;strand<8;strand++){
+    const side=strand%2?-1:1;
+    const bend=side*(.24+r()*.69);
+    const height=.48+r()*.56;
+    const at=t=>[bend*(t**1.42),-height*(t-Math.pow(t,3)*.24)];
+    const frond=Array.from({length:8},(_,i)=>at(i/7));
+    line(ctx,frond,strand%3? tone("light") : tone("bark"),.013);
+    for(let i=1;i<7;i++){
+      const t=i/7,[x,y]=at(t), sweep=.21*Math.sin((t*.8+.10)*Math.PI)*(1-t*.53);
+      for(const n of [-1,1]){
+        const yy=y+(n===1?.036:-.061), xx=x+side*n*sweep*(.75+r()*.38);
+        ctx.fillStyle=iced?"#8bb4ab":(i+strand+n)%4===0?tone("light"):tone("leaves");
+        ctx.beginPath();ctx.moveTo(x,y);
+        ctx.quadraticCurveTo(x+side*n*sweep*.82,y-.07,xx,yy);
+        ctx.quadraticCurveTo(x+side*n*sweep*.52,y+.052,x,y);ctx.fill();
+      }
     }
-    if(snow) path(ctx,[[x,y+.004],[x+half*.19,y+.085],[x+half*.63,height-.037],[x-half*.22,height-.08]],"rgba(227,241,242,.66)");
   }
 }
 
@@ -159,7 +190,24 @@ function rock(ctx,r,tone,course) {
   if(white)path(ctx,[[center,-1],[.26,-.86],[.29,-.74],[.04,-.87],[-.14,-.77],[-.18,-.79]],"#e5f2ee");
 }
 
-function backdropLayers(ctx,w,h,level,focal,yaw,env,variant,time) {
+function cloudTile(canvas){
+  const tile=region(canvas,128);
+  const ctx=tile?.getContext("2d");
+  if(!ctx)return null;
+  const r=rng(791);
+  ctx.scale(1,.52);
+  for(let i=0;i<25;i++){
+    const x=25+r()*78, y=101+r()*34, radius=8+r()*23;
+    const puff=ctx.createRadialGradient(x,y,1,x,y,radius);
+    puff.addColorStop(0,"rgba(250,242,223,.25)");
+    puff.addColorStop(.43,"rgba(249,235,209,.087)");
+    puff.addColorStop(1,"rgba(244,231,213,0)");
+    oval(ctx,x,y,radius,radius,puff);
+  }
+  return tile;
+}
+
+function backdropLayers(ctx,w,h,level,focal,yaw,env,variant,time,cloud) {
   const phase=angle=>yaw+Math.atan((angle-w*.5)/focal);
   const yFor=angle=>level-focal*Math.tan(angle);
   const horizon=env.horizon||{height:.14,ruggedness:.46,forest:1,aurora:variant==="aurora"?1:0,seed:31};
@@ -186,13 +234,21 @@ function backdropLayers(ctx,w,h,level,focal,yaw,env,variant,time) {
       if(Math.abs(diff)>1.23) {r();r();r();continue;}
       const x=w*.5+Math.tan(diff)*focal;
       const y=yFor(.12+r()*.33);
-      const cloudW=focal*(.085+r()*.24);
-      const cloudH=cloudW*(.053+r()*.085);
+      const cloudW=focal*(.10+r()*.36);
+      const cloudH=cloudW*(.13+r()*.15);
       if(x+cloudW<0||x-cloudW>w||y>=level||y+cloudH<0)continue;
-      const haze=ctx.createRadialGradient(x,y,0,x,y+1,cloudW);
-      haze.addColorStop(0,rgba([1,.94,.85],.37));haze.addColorStop(1,rgba([1,.94,.85],0));
-      oval(ctx,x,y,cloudW,cloudH,haze,-.064);
-      oval(ctx,x+cloudW*.27,y-cloudH*.24,cloudW*.61,cloudH*.82,haze,.041);
+      if(cloud){
+        ctx.save();
+        ctx.translate(x,y);ctx.rotate(-.044-i%3*.023);
+        ctx.globalAlpha=.50+(horizon.forest||0)*.10;
+        ctx.drawImage(cloud,-cloudW,-cloudH,cloudW*2,cloudH*2);
+        ctx.restore();
+      } else {
+        ctx.save();ctx.translate(x,y);ctx.scale(cloudW,cloudH*.38);
+        const haze=ctx.createRadialGradient(0,0,.05,0,0,1);
+        haze.addColorStop(0,rgba([1,.94,.85],.29));haze.addColorStop(1,rgba([1,.94,.85],0));
+        oval(ctx,0,0,1,1,haze);ctx.restore();
+      }
     }
   }
   if(horizon.aurora>0) {
@@ -244,6 +300,7 @@ function backdropLayers(ctx,w,h,level,focal,yaw,env,variant,time) {
 
 export function createSoftwareScenery(canvas) {
   const cache=new Map();
+  const cloud=cloudTile(canvas);
   let last="";
   function setWorld(id){if(id!==last){cache.clear();last=id;}}
   function drawProp(ctx,item,x,y,scale,tone,fog,course) {
@@ -254,20 +311,23 @@ export function createSoftwareScenery(canvas) {
     if(size<4||w<2)return true;
     if(size<14)return false;
     const specimen=Math.round((item.wobble??.42)*23)%4;
-    const key=[type,specimen].join(":");
+    const fogBand=fog>=8 ? 9 : fog>=5 ? 5 : 0;
+    const key=[type,specimen,fogBand].join(":");
     let art=cache.get(key);
     if(!art){
-      art=region(canvas,160);
+      art=region(canvas,192);
       if(!art)return false;
       const sketch=art.getContext("2d");
       if(!sketch)return false;
       const random=rng(specimen*7710+83);
-      sketch.translate(80,146);sketch.scale(108,111);
+      sketch.translate(96,175.2);sketch.scale(129.6,133.2);
       sketch.lineJoin="round";
-      if(type==="pine")pine(sketch,random,tone,course);
-      else if(type==="palm")palm(sketch,random,tone,course);
-      else if(type==="blossom")blossom(sketch,random,tone,course);
-      else rock(sketch,random,tone,course);
+      const paint=name=>tone(name,fogBand);
+      if(type==="pine")pine(sketch,random,paint,course);
+      else if(type==="palm")palm(sketch,random,paint,course);
+      else if(type==="blossom")blossom(sketch,random,paint,course);
+      else if(type==="fern")fern(sketch,random,paint,course);
+      else rock(sketch,random,paint,course);
       if(cache.size>=72)cache.delete(cache.keys().next().value);
       cache.set(key,art);
     }
@@ -279,5 +339,5 @@ export function createSoftwareScenery(canvas) {
     ctx.restore();
     return true;
   }
-  return { drawAtmosphere:backdropLayers, drawProp, setWorld, dispose(){cache.clear();} };
+  return { drawAtmosphere(ctx,w,h,level,focal,yaw,env,variant,time){backdropLayers(ctx,w,h,level,focal,yaw,env,variant,time,cloud);}, drawProp, setWorld, dispose(){cache.clear();} };
 }

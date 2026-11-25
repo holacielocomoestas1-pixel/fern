@@ -123,6 +123,7 @@ export function infrastructure(lang, exit) {
     <div class="rr3-power" data-power hidden>
       <button type="button" class="rr3-power-use" data-act="power" aria-keyshortcuts="E"><span data-power-symbol aria-hidden="true"></span><span><small>${t("Use power", "ใช้พลัง")}</small><strong data-value="item"></strong></span></button>
       <button type="button" class="rr3-power-quiz" data-act="power-quiz" aria-keyshortcuts="Q">${glyph("quiz")}<span>${t("Upgrade quiz", "ตอบเพื่ออัปเกรด")}</span></button>
+      <p class="rr3-gyro-hint">${t("Tilt your phone to use power", "เอียงโทรศัพท์เพื่อใช้พลัง")}</p>
     </div>
     <div class="rr3-speed" hidden><strong data-value="speed">0</strong><small>${t("km/h", "กม./ชม.")}</small></div>
     <div class="rr3-controls" hidden>
@@ -182,7 +183,7 @@ export function slate(lang, course, mode, cupIndex, cupChoice) {
   const cup = CUPS[cupChoice];
   const label = mode === "cup" ? `${cup[lang]} · ${cupIndex + 1} / ${cup.ids.length}` :
     `${labels[mode][lang]} · ${trackDistance(course,lang)} · ${course.laps} ${t("laps","รอบ")}`;
-  return `<section class="rr3-slate"><div><p class="rr3-overline">${safe(label)}</p><h2>${safe(course.name[lang])}</h2></div>${chip("skip", t("Skip intro", "ข้ามฉากเปิด"))}</section>`;
+  return `<section class="rr3-slate"><div><p class="rr3-overline">${safe(label)}</p><h2>${safe(course.name[lang])}</h2><p class="rr3-landmark" data-landmark aria-hidden="true"></p></div>${chip("skip", t("Skip intro", "ข้ามฉากเปิด"))}</section>`;
 }
 
 export function powerSymbol(kind) {
@@ -220,6 +221,7 @@ export function center(lang, phase, settings, wasPaused) {
   return `<section class="rr3-center" aria-labelledby="rr3-modal"><h2 id="rr3-modal">${t("Settings", "การตั้งค่า")}</h2>
     <label class="rr3-option">${t("Rival difficulty", "ระดับคู่แข่ง")}<select data-pref="difficulty" ${wasPaused ? "disabled" : ""}><option value="rookie" ${settings.difficulty === "rookie" ? "selected" : ""}>${t("Rookie", "มือใหม่")}</option><option value="pro" ${settings.difficulty === "pro" ? "selected" : ""}>${t("Pro", "โปร")}</option></select></label>
     <label class="rr3-option">${t("Camera motion", "การเคลื่อนไหวกล้อง")}<select data-pref="motion"><option value="system" ${settings.motion === "system" ? "selected" : ""}>${t("System", "ตามอุปกรณ์")}</option><option value="calm" ${settings.motion === "calm" ? "selected" : ""}>${t("Reduced", "ลดการเคลื่อนไหว")}</option></select></label>
+    <label class="rr3-option">${t("Visual quality", "คุณภาพกราฟิก")}<select data-pref="quality"><option value="auto" ${settings.quality === "auto" ? "selected" : ""}>${t("Automatic", "อัตโนมัติ")}</option><option value="high" ${settings.quality === "high" ? "selected" : ""}>${t("Cinema", "ภาพยนตร์")}</option><option value="low" ${settings.quality === "low" ? "selected" : ""}>${t("Performance", "เน้นความลื่นไหล")}</option></select></label>
     <label class="rr3-option">${t("Music and effects", "เพลงและเอฟเฟกต์")}<select data-pref="sound"><option value="on" ${settings.sound ? "selected" : ""}>${t("On", "เปิด")}</option><option value="off" ${!settings.sound ? "selected" : ""}>${t("Off", "ปิด")}</option></select></label>
     <details class="rr3-help"><summary>${t("Gamepad","จอยเกม")}</summary><p>${t("Left stick steers. L2 brakes. R1 or R2 drifts. The face buttons use power, boost, hop and open the quiz from bottom, right, left and top respectively. Press Start to pause. In a quiz, move the stick to select and press the bottom button to confirm.","สติกซ้ายใช้เลี้ยว L2 เบรก R1 หรือ R2 ดริฟต์ ปุ่มล่างใช้พลัง ปุ่มขวาเทอร์โบ ปุ่มซ้ายกระโดด ปุ่มบนเปิดควิซ กด Start เพื่อหยุดชั่วคราว ในควิซใช้สติกเลือกคำตอบและกดปุ่มล่างเพื่อยืนยัน")}</p></details>
     <div class="rr3-buttons">${mainButton("close-settings", t("Done", "เสร็จ"))}</div></section>`;

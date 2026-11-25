@@ -8,7 +8,7 @@ const limit = 1800;
 
 export const POINTS = [15, 12, 10, 8, 6, 4];
 
-const empty = () => ({ settings: { sound: true, difficulty: "rookie", motion: "system" }, records: {}, ghosts: {} });
+const empty = () => ({ settings: { sound: true, difficulty: "rookie", motion: "system", quality: "auto" }, records: {}, ghosts: {} });
 
 function safeGhost(frames) {
   return Array.isArray(frames) && frames.length > 1 && frames.length <= limit &&
@@ -27,6 +27,7 @@ function copySettings(destination, source) {
   if (difficulties.includes(source?.difficulty)) destination.difficulty = source.difficulty;
   if (typeof source?.sound === "boolean") destination.sound = source.sound;
   if (["system", "calm"].includes(source?.motion)) destination.motion = source.motion;
+  if (["auto", "high", "low"].includes(source?.quality)) destination.quality = source.quality;
 }
 
 function read(storage, fallback) {

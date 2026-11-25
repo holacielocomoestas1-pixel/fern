@@ -1,12 +1,10 @@
 import { blend, randomFor, rgb } from "./world-geometry.mjs";
 import { buildTrack, roadPoint } from "./world-track.mjs";
-import { buildScenery, planting } from "./world-scenery.mjs";
+import { buildScenery, planting, terrainSurvey } from "./world-scenery.mjs";
 import { horizonFor } from "./atmosphere.mjs";
 
 import { markInstances } from "./world-fixtures.mjs";
 import { hazardOffset } from "./powers.mjs";
-
-export const assetURL = file => new URL("./assets/" + file + ".webp", import.meta.url).href;
 
 const shared = {
   margin: "d6e8d4", center: "82948c", curbLight: "e7e8c2",
@@ -62,17 +60,56 @@ const biomes = {
   },
 };
 
+// The clock is an art-direction parameter, measured as one turn from midnight.
+// Exposure and wetness are shared between the WebGL and compatibility drawings.
 const worldLighting = {
-  moss: { ambient: .75, sunDirection: [.39,.40,.74] },
-  lantern: { ambient: .71, sun: [1,.64,.43] },
-  river: { ambient: .80 },
-  mangrove: { ambient: .78, sun: [1,.82,.61] },
-  quarry: { ambient: .77, sun: [1,.76,.51] },
-  orchard: { ambient: .80, sun: [1,.85,.77] },
-  glacier: { ambient: .87, sun: [.84,.96,1] },
-  caldera: { ambient: .65, sun: [1,.59,.38], stars: .24 },
-  citadel: { ambient: .79, sun: [.98,.88,.76] },
-  aurora: { ambient: .69, sun: [.37,.89,.81], stars: .74 },
+  moss: {
+    ambient: .59, wetness: .65, exposure: 1.15, timeOfDay: .69, weather: "mist", humidity: .91,
+    sun: [1, .75, .43], sunDirection: [-.42, .23, -.86], skyTop: [.125, .295, .32],
+    skyBottom: [.72, .67, .49], fog: [.51, .585, .534], fogNear: 35, fogFar: 195, clouds: .68,
+  },
+  lantern: {
+    ambient: .52, wetness: .82, exposure: 1.12, timeOfDay: .835, weather: "rain", humidity: .84,
+    sun: [.88, .52, .36], sunDirection: [-.68, .22, -.69], skyTop: [.095, .116, .21],
+    skyBottom: [.49, .32, .43], fog: [.32, .29, .42], fogNear: 52, fogFar: 202, clouds: .73, stars: .32,
+  },
+  river: {
+    ambient: .75, wetness: .22, exposure: 1.02, timeOfDay: .54, weather: "clear", humidity: .45,
+    sun: [1, .93, .75], sunDirection: [-.60, .51, .61], fogNear: 64, fogFar: 246, clouds: .57,
+  },
+  mangrove: {
+    ambient: .61, wetness: .74, exposure: 1.10, timeOfDay: .58, weather: "mist", humidity: .97,
+    sun: [1, .84, .62], sunDirection: [.49, .38, -.79],
+    skyTop: [.23, .34, .40], skyBottom: [.67, .68, .53], fog: [.47, .55, .49], fogNear: 28, fogFar: 174, clouds: .87,
+  },
+  quarry: {
+    ambient: .57, wetness: .08, exposure: 1.14, timeOfDay: .665, weather: "clear", humidity: .18,
+    sun: [1, .71, .47], sunDirection: [-.51, .25, .79],
+    fog: [.57, .49, .41], fogNear: 71, fogFar: 244, clouds: .36,
+  },
+  orchard: {
+    ambient: .67, wetness: .44, exposure: 1.13, timeOfDay: .33, weather: "mist", humidity: .76,
+    sun: [1, .82, .76], sunDirection: [.88, .20, .43], fogNear: 38, fogFar: 189, clouds: .61,
+  },
+  glacier: {
+    ambient: .73, wetness: .37, exposure: 1.00, timeOfDay: .41, weather: "snow", humidity: .65,
+    sun: [.85, .95, 1], sunDirection: [-.48, .44, -.75],
+    skyTop: [.235, .385, .51], skyBottom: [.63, .77, .80], fog: [.49, .64, .72], fogNear: 46, fogFar: 219, clouds: .81,
+  },
+  caldera: {
+    ambient: .47, wetness: .14, exposure: 1.15, timeOfDay: .78, weather: "ash", humidity: .27,
+    sun: [1, .48, .31], sunDirection: [-.66, .18, .72],
+    skyTop: [.165, .124, .168], skyBottom: [.56, .28, .25], fog: [.46, .31, .32], fogNear: 48, fogFar: 211, clouds: .62, stars: .13,
+  },
+  citadel: {
+    ambient: .68, wetness: .38, exposure: 1.08, timeOfDay: .38, weather: "mist", humidity: .56,
+    sun: [1, .87, .67], sunDirection: [.51, .48, -.72], fogNear: 54, fogFar: 240, clouds: .64,
+  },
+  aurora: {
+    ambient: .48, wetness: .51, exposure: 1.11, timeOfDay: .02, weather: "aurora", humidity: .53,
+    sun: [.47, .74, .94], sunDirection: [-.56, .25, -.78],
+    skyTop: [.046, .10, .181], skyBottom: [.23, .42, .46], fog: [.235, .39, .46], fogNear: 47, fogFar: 220, clouds: .30, stars: .88,
+  },
 };
 
 export function createWorld(course, { staticMeshes = true } = {}) {
@@ -81,17 +118,18 @@ export function createWorld(course, { staticMeshes = true } = {}) {
   const parse = (name, fallback) => course.art?.[name] ? rgb(course.art[name].replace("#","")) : fallback;
   const ground = parse("ground", palette.terrain);
   const accent = parse("accent", palette.archGlow);
-  palette.road = parse("road", palette.road);
+  palette.road = blend(parse("road", palette.road), [.15, .164, .17], .19);
   palette.terrain = blend(palette.terrain,ground,.70);
   palette.terrainLight = blend(palette.terrainLight,ground,.58);
-  palette.verge = blend(palette.verge,ground,.74);
+  palette.verge = blend(blend(palette.verge,ground,.74), [.21,.20,.155], .19);
   palette.archGlow = blend(palette.archGlow,accent,.48);
   palette.curbDark = blend(palette.curbDark,accent,.26);
   palette.sign = course.name?.en?.toUpperCase().replace(/[^A-Z ]/g,"") || sign;
   const marks = markInstances(course);
   const track = staticMeshes ? buildTrack(course, palette, randomFor(course.seed)) : null;
-  const props = planting(course, randomFor(course.seed ^ 0xad7f), marks);
-  const landscapes = staticMeshes ? buildScenery(course, palette, marks, props) : [];
+  const survey = terrainSurvey(course);
+  const props = planting(course, randomFor(course.seed ^ 0xad7f), marks, survey);
+  const landscapes = staticMeshes ? buildScenery(course, palette, marks, props, survey) : [];
   const finish = item => {
     const frame = course.frame(item.s);
     return { item, frame, center:roadPoint(course,item.s,item.offset) };

@@ -1,18 +1,18 @@
 import { Mesh, bevel, egg, latheWheel, lerpColor, rgb, ring, shell, tint, tube } from "./kart-mesh.mjs";
 
 const C = Object.fromEntries(Object.entries({
-  ink: "192728", rubber: "263231", carbon: "223d37", seat: "4b3633", metal: "a6b7ae",
-  brass: "e3b874", lamp: "fff3bb", tail: "ff755c", linen: "fff1d5", linenShade: "cfae82",
+  ink: "192728", rubber: "263231", seat: "4b3633", metal: "a6b7ae",
+  lamp: "fff3bb", tail: "ff755c", linen: "fff1d5", linenShade: "cfae82",
   tan: "d9a269", amber: "d17838", darkFur: "6a452e", eyes: "33201c", shine: "fff9e5",
 }).map(([name, value]) => [name, rgb(value)]));
 
 const roster = [
-  { name: { en: "Fern", th: "เฟิร์น" }, color: "347e64", trim: "ddc092", accent: "f7d28c", fur: "d9a269", type: "bear" },
-  { name: { en: "Pip", th: "พิพ" }, color: "d3a1e4", trim: "f3cbe8", accent: "ffd38d", fur: "f0d9e0", type: "hare" },
-  { name: { en: "Ember", th: "เอมเบอร์" }, color: "d4664d", trim: "f7a46c", accent: "ffe4a4", fur: "db7946", type: "fox" },
-  { name: { en: "Skye", th: "สกาย" }, color: "4f99d3", trim: "77cedf", accent: "f3d390", fur: "70aade", type: "bird" },
-  { name: { en: "Thistle", th: "ธิสเซิล" }, color: "d4a34b", trim: "f6d679", accent: "dbf395", fur: "bc8763", type: "hedgehog" },
-  { name: { en: "Juniper", th: "จูนิเปอร์" }, color: "7873bd", trim: "b1a5e0", accent: "c0efc8", fur: "a7a4ab", type: "raccoon" },
+  { name: { en: "Fern", th: "เฟิร์น" }, color: "1e604e", trim: "c1a27d", accent: "e2ba77", fur: "d9a269", type: "bear" },
+  { name: { en: "Pip", th: "พิพ" }, color: "84528f", trim: "c4a0b4", accent: "ecc6a1", fur: "f0d9e0", type: "hare" },
+  { name: { en: "Ember", th: "เอมเบอร์" }, color: "9d3f30", trim: "d29a62", accent: "f4d5a3", fur: "db7946", type: "fox" },
+  { name: { en: "Skye", th: "สกาย" }, color: "315e81", trim: "91b8c8", accent: "eec485", fur: "70aade", type: "bird" },
+  { name: { en: "Thistle", th: "ธิสเซิล" }, color: "9d722d", trim: "d6b679", accent: "dce68d", fur: "bc8763", type: "hedgehog" },
+  { name: { en: "Juniper", th: "จูนิเปอร์" }, color: "585180", trim: "a599c5", accent: "b5d6b8", fur: "a7a4ab", type: "raccoon" },
 ];
 
 export const DRIVERS = roster.map(driver => ({ name: driver.name, primary: "#" + driver.color }));
@@ -22,107 +22,180 @@ const wheelOffsets = [
 ];
 
 const tireProfile = [
-  [-.184, 0, 1], [-.184, .094, 1], [-.171, .205, 1], [-.179, .22, 2],
-  [-.16, .243, 0], [-.162, .288, 0], [-.133, .338, 0], [-.074, .358, 0],
-  [.074, .358, 0], [.133, .338, 0], [.162, .288, 0], [.16, .243, 0],
-  [.179, .22, 2], [.171, .205, 1], [.184, .094, 1], [.184, 0, 1],
+  [-.171,.204,0],[-.184,.227,0],[-.171,.253,0],[-.171,.289,0],[-.139,.339,0],
+  [-.089,.355,0],[-.071,.353,0],[-.051,.357,0],[0,.354,0],[.051,.357,0],
+  [.071,.353,0],[.089,.355,0],[.139,.339,0],[.171,.289,0],[.171,.253,0],[.184,.227,0],[.171,.204,0],
 ];
+const hubProfile = [
+  [-.185,0,1],[-.171,.085,1],[-.138,.10,1],[-.125,.164,1],[-.183,.217,2],
+  [.183,.217,2],[.125,.164,1],[.138,.10,1],[.171,.085,1],[.185,0,1],
+];
+const GOLD = rgb("aa7746");
+const IRON = rgb("434c49");
+const BLACK = rgb("172421");
+const STEEL = rgb("688079");
+const CREAM = rgb("e0c8a0");
+const DIAL = rgb("253733");
 
-function wheel(primary, trim) {
-  const m = new Mesh();
-  latheWheel(m, tireProfile, C.rubber, lerpColor(C.metal, primary, .2), trim);
+function makeWheel(primary, trim, showcase) {
+  const rubber = new Mesh();
+  const metal = new Mesh();
+  const cutProfile = showcase ? tireProfile : tireProfile.filter((_,i)=>![2,6,8,10,14].includes(i));
+  latheWheel(rubber, cutProfile, tint(C.rubber,.71), IRON, IRON, showcase ? 26 : 22);
+  latheWheel(metal, hubProfile, BLACK, lerpColor(IRON, primary, .15), tint(trim, .91), showcase ? 22 : 17);
   for (const side of [-1, 1]) {
-    ring(m, [side * .183, 0, 0], .213, .009, tint(trim, .77), "x", 18, 4);
-    egg(m, [side * .196, 0, 0], [.026, .087, .087], tint(trim, .85), { rings: 5, slices: 10 });
-    const spokes = 5;
+    const x = side * .188;
+    ring(metal, [x, 0, 0], .210, .008, C.metal, "x", 15, 4);
+    egg(metal, [side * .200, 0, 0], [.021, .070, .070], trim, { rings: 3, slices: 8 });
+    const spokes = showcase ? 6 : 5;
     for (let i = 0; i < spokes; i++) {
-      const angle = i * Math.PI * 2 / spokes;
-      const inner = [side * .179, .084 * Math.cos(angle), .084 * Math.sin(angle)];
-      const outer = [side * .174, .187 * Math.cos(angle + .08), .187 * Math.sin(angle + .08)];
-      tube(m, [inner, outer], [.018, .025], tint(C.ink, 1.63), 5);
+      const angle = i * Math.PI*2 / spokes;
+      const around = (r, a, d) => [side*d, r * Math.cos(angle + a), r * Math.sin(angle + a)];
+      tube(metal, [around(.065,0,.197), around(.122,.066,.182), around(.197,.14,.175)],
+        [.014,.019,.013], tint(C.metal, 1.05), 4);
+      if (showcase) egg(metal, around(.051,.4,.209), [.011,.009,.009], tint(IRON,1.32), { rings: 2, slices: 5 });
     }
   }
-  return m.finish(0, { surface: "rubber", roughness: .81 });
+  return {
+    wheel: rubber.finish(0, { surface: "rubber", roughness: .84 }),
+    wheelMetal: metal.finish(0, { surface: "metal", roughness: .24 }),
+  };
 }
 
-function chassis(m, glow, metal, paint, trim, accent) {
-  const stations = [
-    [-1.49, .03, .52, .025], [-1.43, .43, .53, .19], [-1.3, .66, .53, .25],
-    [-1.04, .695, .52, .25], [-.65, .637, .48, .225], [-.17, .59, .472, .215],
-    [.37, .63, .466, .23], [.78, .653, .465, .226], [1.04, .59, .451, .205],
-    [1.31, .44, .439, .176], [1.49, .22, .43, .128], [1.55, .028, .416, .03],
+function stitchRun(mesh, from, to, count, color) {
+  for (let i=0;i<count;i++) {
+    const t=(i+.13)/count;
+    const end=t+.54/count;
+    const point=u=>from.map((c,j)=>c+(to[j]-c)*u);
+    stitch(mesh,point(t),point(end),color,.0037);
+  }
+}
+
+function fernEmblem(mesh, x, y, z, scale = 1) {
+  const center=(a,b,c)=>[x+a*scale,y+b*scale,z+c*scale];
+  ring(mesh,center(0,0,0),.069*scale,.0048*scale,CREAM,"z",16,4);
+  tube(mesh,[center(-.032,-.043,.004),center(-.006,-.009,.008),center(.027,.043,.004)],.006*scale,CREAM,5);
+  for (const [dx,dy,angle] of [[-.020,-.012,-.66],[.016,.018,.65],[.035,.033,-.49]]) {
+    egg(mesh,center(dx,dy,.006),[.014*scale,.024*scale,.005*scale],CREAM,
+      {rings:4,slices:7,rotation:[0,0,angle]});
+  }
+}
+
+function chassis(m, glow, metal, trimDetails, paint, trim, accent, index) {
+  const chrome = lerpColor(C.metal, trim, .24);
+  const darkPaint = tint(paint, .72);
+  const shellStations = [
+    [-1.54,.026,.52,.018,.017],[-1.46,.332,.51,.137,.117],[-1.29,.47,.51,.227,.196],
+    [-1.05,.488,.49,.28,.205],[-.64,.51,.445,.228,.227],[-.15,.562,.45,.203,.227],
+    [.25,.58,.493,.237,.235],[.65,.535,.486,.235,.218],[1.0,.447,.462,.198,.159],
+    [1.25,.35,.459,.168,.145],[1.43,.293,.482,.188,.170],[1.54,.055,.48,.105,.101],
   ];
-  shell(m, stations, (vertical, u) => {
-    if (vertical < -.37) return tint(C.ink, 1.06 + .17 * u);
-    if (vertical > .32) return lerpColor(paint, trim, .28 + .21 * u);
-    return tint(paint, .91 + .09 * vertical);
-  });
-  // Rounded front prow, split side pods and the warm rear radiator.
-  bevel(m, [0, .374, 1.399], [1.06, .21, .22], .085, C.ink);
-  bevel(m, [0, .464, 1.338], [.84, .26, .3], .106, paint);
-  bevel(m, [0, .581, 1.06], [.34, .22, .769], .1, tint(C.carbon, .87), [-.11, 0, 0]);
-  bevel(m, [0, .648, 1.06], [.266, .142, .55], .061, trim, [-.11, 0, 0]);
-  bevel(m, [0, .47, -1.322], [1.36, .23, .34], .087, C.carbon);
-  bevel(m, [0, .595, -1.366], [.66, .211, .223], .066, tint(C.metal, .6));
-  bevel(m, [0, .592, -1.473], [.514, .161, .055], .025, C.ink);
-  for (let i = 0; i < 4; i++) {
-    bevel(metal, [0, .543 + .035 * i, -1.503], [.415, .012, .015], .006, tint(C.brass, .86));
-  }
-  bevel(m, [0, .813, -1.035], [.9, .42, .55], .12, tint(paint, .83), [-.12, 0, 0]);
-  bevel(m, [0, .963, -1.147], [.894, .126, .44], .062, trim);
-  bevel(m, [0, .583, -.66], [.819, .24, .634], .111, C.seat);
-  bevel(m, [0, .983, -.797], [.709, .771, .27], .12, tint(C.seat, .72), [-.15, 0, 0]);
-  bevel(m, [0, 1.025, -.674], [.614, .611, .148], .064, C.seat, [-.15, 0, 0]);
-  for (const side of [-1, 1]) {
-    egg(m, [side * .63, .49, -.05], [.186, .205, .638], contrastPanel(paint), { rings: 7, slices: 14 });
-    egg(m, [side * .672, .635, .025], [.153, .056, .527], trim, { rings: 5, slices: 12 });
-    bevel(m, [side * .795, .539, -.067], [.08, .096, .604], .034, tint(C.carbon, 1.37));
-    bevel(m, [side * .803, .554, -.03], [.057, .022, .421], .01, accent);
-    bevel(m, [side * .458, .626, 1.118], [.374, .232, .32], .102, tint(C.ink, 1.34), [0, -side * .12, 0]);
-    egg(m, [side * .467, .647, 1.276], [.137, .077, .054], accent, { rings: 6 });
-    egg(glow, [side * .469, .654, 1.306], [.098, .053, .024], C.lamp, { rings: 5, slices: 10 });
-    bevel(m, [side * .464, .704, -1.368], [.319, .183, .206], .069, tint(C.ink, 1.41));
-    bevel(m, [side * .465, .71, -1.477], [.244, .099, .045], .021, tint(C.tail, .75));
-    bevel(glow, [side * .466, .723, -1.497], [.212, .043, .022], .01, C.tail);
-    bevel(glow, [side * .465, .688, -1.5], [.165, .015, .018], .007, tint(C.tail, .86));
-    const exhaustX = side * .48;
-    tube(m, [[exhaustX, .425, -1.03], [exhaustX, .43, -1.4], [exhaustX, .429, -1.541]], [.099, .087, .084], C.carbon, 10);
-    ring(metal, [exhaustX, .429, -1.545], .074, .018, C.metal, "z", 12, 6);
-    egg(m, [exhaustX, .429, -1.536], [.068, .067, .018], C.ink, { rings: 4, slices: 10 });
-    bevel(m, [side * .578, .269, -.96], [.667, .069, .09], .029, C.metal);
-    bevel(m, [side * .56, .27, 1.04], [.647, .065, .09], .028, C.metal);
-    // Visible axle ends and brushed guards are modeled all the way around.
-    tube(metal, [[side * .471,.342,-1.14],[side * .665,.32,-1.005],[side * .80,.36,-.96]], [.027,.03,.041], tint(C.metal, .72), 6);
-    tube(metal, [[side * .575,.393,1.11],[side * .728,.365,1.035],[side * .82,.357,1.04]], [.035,.025,.037], tint(C.metal, .8), 6);
-    tube(metal, [[side * .70,.311,-.66],[side * .862,.345,-.49],[side * .878,.363,.24],[side * .723,.358,.48]], [.037,.034,.034,.033], C.brass, 6);
-    for (let louver = 0; louver < 3; louver++) {
-      const z = -.26 + .099 * louver;
-      bevel(m, [side * .831,.523,z], [.026,.035,.052], .012, C.ink, [-.36,0,0]);
+  const surface = shell(m, shellStations, (z, angle) => {
+    const high = Math.sin(angle);
+    if (high < -.44) return tint(BLACK, 1.09 + .10*Math.sin(z*3));
+    const vertical = Math.max(0, high);
+    return tint(paint, .85 + .22*vertical + .025*Math.cos(z*7));
+  },index === 0 ? 26 : 18);
+  for (const side of [-1,1]) {
+    // Twin pinstripes follow the panel instead of floating over a flat hood.
+    for(const [angle,shift,width] of [[.94,.004,.009],[1.03,.005,.0042]]) {
+      const positions = Array.from({ length: index === 0 ? 22 : 11 },(_, i)=>{
+        const z=.17+1.28*i/(index === 0 ? 21 : 10);
+        const {p,n}=surface(z,side>0 ? angle : Math.PI-angle);
+        return p.map((v,j)=>v+n[j]*shift);
+      });
+      tube(metal,positions,width,tint(trim,.86),5);
     }
-    // Rivets are substantial enough to read in the cinematic reveal.
-    egg(m, [side * .556, .971, -1.196], [.034, .028, .028], accent, { rings: 4, slices: 8 });
   }
-  tube(m, [[0, .51, .456], [0, .79, .341], [0, .987, .21]], [.052, .044, .047], C.metal, 8);
-  ring(m, [0, 1.017, .19], .225, .038, C.ink, "z", 17, 7);
-  egg(m, [0, 1.016, .18], [.085, .084, .047], tint(C.metal, .8), { rings: 6, slices: 10 });
-  bevel(m, [0, 1.028, .181], [.322, .033, .043], .015, C.carbon);
-  egg(m, [0, 1.027, .126], [.04, .039, .018], accent, { rings: 5, slices: 8 });
+
+  // A plated, inward-facing radiator with real fins, not an outline painted on the bonnet.
+  bevel(m, [0,.462,1.47], [.715,.482,.192],.138,darkPaint,[-.10,0,0]);
+  bevel(metal, [0,.464,1.54], [.622,.415,.059],.12,chrome,[-.10,0,0]);
+  bevel(trimDetails, [0,.467,1.573], [.560,.351,.034],.105,BLACK,[-.10,0,0]);
+  for (let i=0;i<9;i++) {
+    const barY=.330+i*.034;
+    const barW=.490-.15*((i-4)/4)**4;
+    tube(metal,[[-barW/2,barY,1.597],[barW/2,barY,1.597]],.0055,tint(IRON,1.45),4);
+  }
+  for (const side of [-1,1]) tube(metal,[[side*.090,.298,1.600],[side*.086,.601,1.605]],.0054,STEEL,4);
+  fernEmblem(metal,0,.612,1.607,.46);
+
+  // Tall cowl and a stitched leather seat sit behind the narrow central cockpit.
+  bevel(trimDetails, [0,.572,-.574], [.676,.183,.587],.084,tint(C.seat,.72));
+  bevel(trimDetails, [0,.916,-.83], [.671,.694,.215],.103,tint(C.seat,.78),[-.15,0,0]);
+  bevel(trimDetails, [0,.946,-.713], [.573,.555,.109],.05,C.seat,[-.15,0,0]);
+  bevel(m, [0,.718,-1.072], [.724,.326,.514],.146,darkPaint,[-.14,0,0]);
+  tube(metal,[[-.344,.825,-.974],[-.292,.897,-1.095],[0,.933,-1.163],[.292,.897,-1.095],[.344,.825,-.974]],.016,trim,6);
+  if(index === 0) for (const side of [-1,1]) stitchRun(trimDetails,[side*.245,.739,-.678],[side*.245,1.183,-.704],10,CREAM);
+  bevel(m, [0,.459,-1.394], [1.017,.255,.262], .076,darkPaint);
+  bevel(metal, [0,.462,-1.527], [.656,.153,.045], .029,chrome);
+  bevel(trimDetails, [0,.463,-1.553], [.581,.112,.022], .02,BLACK);
+  for(let i=0;i<5;i++) tube(metal,[[-.25,.42+.021*i,-1.569],[.25,.42+.021*i,-1.569]],.0045,tint(STEEL,.88),4);
+  const plate=lerpColor(trim,BLACK,.43);
+  bevel(trimDetails, [0,.751,-1.315], [.241,.113,.046],.013,plate);
+  fernEmblem(metal,0,.75,-1.344,.57);
+
+  for (const side of [-1, 1]) {
+    // Lower body panels leave the steering rack and suspension unobstructed.
+    egg(m, [side * .599, .438, -.11], [.157, .143, .542], tint(paint,.82),
+      {rings:8,slices:14,rotation:[0,side*.075,side*.11],shaping:([x,y,z])=>[x*(1-.2*z),y,z]});
+    tube(metal, [[side*.687,.504,-.555],[side*.722,.521,-.319],[side*.747,.529,.03],
+      [side*.717,.526,.254],[side*.657,.493,.372]],.0098,tint(trim,.97),6);
+    tube(metal, [[side * .50,.308,-1.16],[side * .701,.306,-.835],
+      [side * .807,.297,-.510],[side * .821,.299,.345],[side*.726,.309,.661],[side*.536,.320,.941]], .027, GOLD, 7);
+    for (let i=0;i<3;i++) {
+      const z=-.398+i*.056;
+      tube(trimDetails,[[side*.734,.457,z],[side*.744,.477,z+.055]],.009,BLACK,5);
+    }
+    if(index === 0) for(const z of [-.48,-.16,.23]) egg(metal,[side*.74,.461,z],[.011,.013,.013],chrome,{rings:3,slices:7});
+
+    tube(metal, [[side*.44,.36,.912],[side*.704,.396,.923],[side*.81,.406,1.04]],.024,STEEL,6);
+    tube(metal, [[side*.433,.274,1.125],[side*.644,.291,1.09],[side*.808,.336,1.04]],.026,IRON,6);
+    tube(metal, [[side*.438,.303,-.843],[side*.632,.307,-.931],[side*.837,.355,-.96]],.03,STEEL,6);
+    tube(metal, [[side*.48,.585,1.028],[side*.612,.369,1.029]], .031,chrome, 6);
+    if (index === 0) {
+      const coils = Array.from({ length:20 },(_, i)=>{
+        const t=i/19,a=t*Math.PI*8; return [side*(.487+.112*t+.037*Math.cos(a)),.569-.160*t,1.028+.039*Math.sin(a)];
+      });
+      tube(metal, coils, .0083, GOLD, 4);
+    }
+
+    // Separate lens and transparent-looking geometry sealed in a brass housing.
+    egg(trimDetails, [side*.474,.525,1.266],[.123,.115,.119],BLACK,{rings:7,slices:12});
+    ring(metal, [side*.475,.534,1.348],.096,.011,chrome,"z",16,4);
+    tube(metal,[[side*.488,.460,1.355],[side*.534,.476,1.365]],.0045,tint(accent,.83),4);
+    egg(glow,[side*.475,.534,1.348],[.086,.086,.036],C.lamp,{rings:6,slices:12});
+    const lamp = [side*.438,.59,-1.465];
+    ring(metal,lamp,.072,.010,tint(STEEL,1.25),"z",16,4);
+    egg(glow,[lamp[0],lamp[1],lamp[2]-.013],[.063,.058,.025],C.tail,{rings:6,slices:10});
+
+    const pipeX=side*.40;
+    tube(metal,[[pipeX,.359,-1.05],[side*.484,.359,-1.178],[side*.494,.366,-1.437],[side*.493,.38,-1.552]],
+      [.058,.063,.070,.070],tint(chrome,.70),9);
+    ring(metal,[side*.493,.38,-1.563],.059,.011,chrome,"z",15,4);
+    egg(trimDetails,[side*.493,.38,-1.565],[.051,.051,.009],BLACK,{rings:4,slices:10});
+    // Tire silhouette and camera framing stay clear of the chassis.
+    tube(metal,[[side*.32,.273,.21],[side*.602,.272,.24],[side*.742,.281,.351]],.023,IRON,6);
+  }
+
+  // Exposed shaft ends at the small wheel, just behind the sculpted paws.
+  bevel(m, [0,.677,.364], [.319,.243,.332], .104,darkPaint,[-.26,0,0]);
+  tube(metal, [[0,.605,.367],[0,.788,.298],[0,.997,.157]], [.041,.028,.029], chrome,7);
+  ring(trimDetails,[0,1.025,.166],.207,.029,BLACK,"z",22,6);
+  egg(metal,[0,1.023,.151],[.062,.062,.036],chrome,{rings:6,slices:9});
+  for(let i=0;i<3;i++){
+    const a=i*Math.PI*2/3+.45;
+    tube(metal,[[.044*Math.cos(a),1.024+.044*Math.sin(a),.135],
+      [.176*Math.cos(a),1.024+.176*Math.sin(a),.16]], .017,IRON,5);
+  }
+  const tach = [0,.764,.483];
+  ring(metal,tach,.054,.007,chrome,"z",12,4);
+  egg(trimDetails,[tach[0],tach[1],tach[2]+.001],[.049,.049,.011],DIAL,{rings:4,slices:10});
+  tube(metal,[[0,.753,.493],[.025,.785,.494]],.004,CREAM,5);
 }
 
 function stitch(m, from, to, color, radius = .0055) {
   tube(m, [from, to], [radius, radius], color, 4);
-}
-
-function contrastPanel(paint) {
-  return lerpColor(paint, C.carbon, .25);
-}
-
-function fernBadge(m) {
-  egg(m, [0, .92, -1.37], [.143, .119, .045], C.linen, { rings: 6, slices: 14 });
-  for (const side of [-1, 1]) {
-    egg(m, [side * .044, .934, -1.407], [.029, .055, .012], rgb("438264"), { rings: 5, slices: 8, rotation: [0, 0, -side * .55] });
-  }
-  tube(m, [[0, .884, -1.407], [0, .919, -1.42], [0, .96, -1.413]], .012, rgb("438264"), 6);
 }
 
 function driverBody(m, hands, fur, shirt, shape = 1) {
@@ -140,7 +213,12 @@ function plushHead(m, detail, fur, y, z, sizes, expression = {}) {
   const [w, h, d] = sizes;
   // Combine a narrow forehead with tucked chin and a fuller cheek volume.
   egg(m, [0, y, z], sizes, fur, {
-    rings: 13, slices: 24, sheen: .11, fiber: .012,
+    rings: 13, slices: 24, sheen: .11, fiber: .006,
+    colorAt: expression.bear ? ([r,g,b],[x,dy,dz]) => {
+      const cheek = .15 * Math.exp(-((Math.abs(x)-.60)**2*11 + (dy+.29)**2*5)) * Math.max(0,dz);
+      const muzzle = .13 * Math.exp(-(x*x*7 + (dy+.37)**2*9)) * Math.max(0,dz);
+      return lerpColor(lerpColor([r,g,b],C.amber,cheek),C.linen,muzzle);
+    } : undefined,
     shaping: ([x, fy, fz])=>[
       x * (1 + .075 * Math.cos((fy + .21) * 3.1) - .11 * Math.max(0,-fy-.24)),
       fy,
@@ -158,8 +236,14 @@ function plushHead(m, detail, fur, y, z, sizes, expression = {}) {
       { rings: 5, slices: 10, rotation: [0, side * .36, 0] });
     if (eyes) {
       const faceZ = eyeZ + (mask ? .028 : .003);
-      egg(detail, [x, eyeY, faceZ], [.039 * s, .059 * s, .023], C.eyes, { rings: 7, slices: 12, rotation: [0, side * .16, -side * .19] });
-      egg(detail, [x - .010, eyeY + .017, faceZ + .020], [.008, .010, .007], tint(C.shine,.91), { rings: 4, slices: 8 });
+      const stitched = expression.bear === true;
+      if(stitched) {
+        tube(detail, [[x-side*.041,eyeY+.01,faceZ-.007],[x-side*.024,eyeY+.042,faceZ+.004],
+          [x+side*.012,eyeY+.044,faceZ+.006],[x+side*.035,eyeY+.017,faceZ-.002]],
+          [.002,.006,.006,.002], tint(C.darkFur,.79),5);
+      }
+      egg(detail, [x, eyeY, faceZ], [(.039-.007*stitched) * s, .059 * s, .023], C.eyes, { rings: 7, slices: 12, rotation: [0, side * .16, -side * .19] });
+      egg(detail, [x - .010, eyeY + .017, faceZ + .020], [.007, .008, .006], tint(C.shine,.88), { rings: 4, slices: 8 });
     }
   }
   if (!mouth) return;
@@ -186,15 +270,22 @@ function bonnet(m, y, z, base) {
   };
   const cloth = (theta, phi, width) => {
     const p = transform(theta, phi, width);
-    const n = [Math.sin(theta) * Math.cos(phi), Math.sin(theta) * Math.sin(phi), Math.cos(theta)];
-    const pleat = .95 + .049 * Math.cos(phi * 18) + .036 * Math.sin(phi * 12 + theta * 2.6);
+    const radial = [Math.sin(theta) * Math.cos(phi), Math.sin(theta) * Math.sin(phi), Math.cos(theta)];
+    const thetaPlus=transform(theta+.002,phi,width), thetaMinus=transform(theta-.002,phi,width);
+    const phiPlus=transform(theta,phi+.002,width), phiMinus=transform(theta,phi-.002,width);
+    const [ax,ay,az]=thetaPlus.map((v,i)=>v-thetaMinus[i]);
+    const [bx,by,bz]=phiPlus.map((v,i)=>v-phiMinus[i]);
+    const normal=[ay*bz-az*by,az*bx-ax*bz,ax*by-ay*bx];
+    const magnitude=Math.hypot(...normal);
+    const n=magnitude > 1e-9 ? normal.map(v=>v/magnitude) : radial;
+    const pleat = .966 + .035 * Math.cos(phi * 18) + .020 * Math.sin(phi * 12 + theta * 2.6);
     return { p, n, color: tint(base, pleat) };
   };
   m.grid(12, 48, (u, v) => cloth(.99 + u * (Math.PI - .99), v * Math.PI * 2, 0));
-  m.grid(4, 60, (u, v) => cloth(.99 - u * .225, v * Math.PI * 2, .013 + .038 * Math.sin(u * 1.98)));
+  m.grid(4, 60, (u, v) => cloth(.99 - u * .225, v * Math.PI * 2, .013 + .025 * Math.sin(u * 1.98)));
   for (let i=0;i<48;i++) {
     const a = i * Math.PI * 2 / 48;
-    stitch(m, transform(1.12,a,.008), transform(1.12,a+.074,.008), tint(C.linenShade,1.13), .004);
+    stitch(m, transform(1.12,a,.008), transform(1.12,a+.059,.008), tint(C.linenShade,1.06), .0035);
   }
   // The center seam visible during a chase runs over the back of the cap.
   for (const side of [-1,1]) {
@@ -207,7 +298,8 @@ function bonnet(m, y, z, base) {
 }
 
 function fernDriver(m, unusedFur, unusedShirt, fabric, detail) {
-  driverBody(fabric, m, C.tan, rgb("ba915f"));
+  const jacket=rgb("b58f61");
+  driverBody(fabric, m, C.tan, jacket);
   const y = 1.562, z = -.473;
   plushHead(m, detail, C.tan, y, z, [.416, .437, .391], { nose: C.amber, bear:true });
   for (const side of [-1, 1]) {
@@ -220,6 +312,10 @@ function fernDriver(m, unusedFur, unusedShirt, fabric, detail) {
   }
   bonnet(fabric, y, z, C.linen);
   for (const side of [-1, 1]) {
+    const cuff = [side*.248,1.016,.041];
+    egg(fabric,cuff,[.091,.084,.044],tint(jacket,.81),{rings:4,slices:10,rotation:[-.14,0,side*.17]});
+    const sleevePath=[[side*.286,1.083,-.409],[side*.327,1.039,-.263],[side*.296,1.033,-.107]];
+    tube(fabric,sleevePath,.0041,tint(jacket,.74),5);
     tube(fabric, [[side * .341, 1.436, -.205], [side * .255, 1.28, -.127], [side * .13, 1.17, -.11], [0, 1.138, -.113]],
       [.027, .030, .033, .028], C.linen, 8);
     egg(fabric, [side * .103, 1.166, -.075], [.123, .059, .037], C.linen, {
@@ -237,7 +333,9 @@ function fernDriver(m, unusedFur, unusedShirt, fabric, detail) {
     });
   }
   egg(fabric, [0, 1.148, -.034], [.044, .043, .036], C.linen, { rings: 7, slices: 10 });
-  fernBadge(detail);
+  for (const y of [.951,1.02]) {
+    egg(detail,[0,y,-.135],[.019,.019,.008],GOLD,{rings:3,slices:7});
+  }
 }
 
 function pointedEar(m, side, y, z, main, inner) {
@@ -347,19 +445,19 @@ export function createKarts() {
     const fur = new Mesh();
     const fabric = new Mesh();
     const detail = new Mesh();
-    chassis(body, lights, metal, primary, trim, accent);
+    chassis(body, lights, metal, detail, primary, trim, accent, index);
     character[driver.type](fur, rgb(driver.fur), lerpColor(primary, C.ink, .24), fabric, detail);
     return {
       ...DRIVERS[index],
       body: [
-        body.finish(0, { surface: "paint", roughness: .46 }),
-        metal.finish(0, { surface: "metal", roughness: .35 }),
+        body.finish(0, { surface: "paint", roughness: .27 }),
+        metal.finish(0, { surface: "metal", roughness: .31 }),
         fur.finish(0, { surface: "fur", roughness: .96 }),
         fabric.finish(0, { surface: "cloth", roughness: .93 }),
         detail.finish(0, { surface: "detail", roughness: .74 }),
         lights.finish(.53, { surface: "lights", roughness: .56 }),
       ],
-      wheel: wheel(primary, trim),
+      ...makeWheel(primary, trim, index === 0),
       wheelOffsets,
     };
   });

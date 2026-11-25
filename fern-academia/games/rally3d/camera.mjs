@@ -1,3 +1,5 @@
+import { viewFor } from "./render-math.mjs";
+
 export const INTRO_SECONDS = 7.25;
 export const FINISH_SECONDS = 3.6;
 
@@ -132,6 +134,7 @@ function landscapeShot(course, time, aspect, close) {
   return {
     ...shot(eye, target, (close ? 55 : 52) + 14 * portrait, title, normal * mix(.045, .008, t)),
     trackDistance: distance,
+    landmark,
   };
 }
 
@@ -150,17 +153,65 @@ function protectDriver(view, pose, aspect) {
   return { ...view, tx: view.x + Math.sin(constrained) * distance, tz: view.z + Math.cos(constrained) * distance };
 }
 
+// Dolly back only as far as the complete chassis and bonnet need. The angle
+// and horizon stay intact when a tall viewport or a camera orbit crowds the kart.
+function frameShowpiece(camera, pose, aspect) {
+  const view = viewFor(camera, aspect, .1, 400);
+  const sin = Math.sin(pose.yaw), cos = Math.cos(pose.yaw);
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const areaX = view.tanHalf * aspect * .94;
+  const areaY = view.tanHalf * .89;
+  let pullBack = 0;
+  for (const x of [-1.16, 1.16]) {
+    for (const z of [-1.66, 1.66]) {
+      for (const y of [0, 2.04]) {
+        const p = [pose.x + x*cos + z*sin - camera.x, pose.y + y - camera.y, pose.z + z*cos - x*sin - camera.z];
+        const depth = dot(p, view.forward);
+        pullBack = Math.max(pullBack, Math.abs(dot(p, view.right))/areaX-depth, Math.abs(dot(p, view.up))/areaY-depth);
+      }
+    }
+  }
+  return {
+    ...camera,
+    x: camera.x - pullBack * view.forward[0],
+    y: camera.y - pullBack * view.forward[1],
+    z: camera.z - pullBack * view.forward[2],
+  };
+}
+
 export function createDirector() {
   let latest = null;
   let previousPhase;
   let previousMode;
   let previousPose;
+  // Drone camera: a second-order spring follows the kart instead of a rigid
+  // lock, and short-lived impulses move the camera when things happen.
+  // Everything here is inert under reduced motion / calm mode.
+  let spring = null;
+  let swayTime = 0;
+  let gridOrbit = 0;
+  const impulses = { pull: 0, fov: 0, push: 0, pan: 0, sweep: 0 };
 
   function reset() {
     latest = null;
     previousPhase = undefined;
     previousMode = undefined;
     previousPose = undefined;
+    spring = null;
+    swayTime = 0;
+    gridOrbit = 0;
+    impulses.pull = impulses.fov = impulses.push = impulses.pan = impulses.sweep = 0;
+  }
+
+  // Event-driven drone moves. Values are peak offsets; they decay in get().
+  // turbo: pull back + FOV punch. hit: quick push-in (the shake itself stays
+  // the v8.2 trauma in game.mjs). power: brief pan toward where the power
+  // went. overtake: lateral sweep, positive when gaining a position.
+  function pulse(kind, value = 1) {
+    if (kind === "turbo") { impulses.pull = Math.max(impulses.pull, 2.4); impulses.fov = Math.max(impulses.fov, 4); }
+    else if (kind === "hit") { impulses.push = Math.max(impulses.push, 1.3 * clamp(value || 1, 0, 1)); }
+    else if (kind === "power") { impulses.pan = 1.6; }
+    else if (kind === "overtake") { impulses.sweep = (value >= 0 ? 1 : -1) * 1.0; }
   }
 
   function get({ phase, elapsed = 0, course, player, pose, mode = "chase", reducedMotion = false, dt = 1 / 60, aspect = 16 / 9, orbit = 0 }) {
@@ -214,29 +265,89 @@ export function createDirector() {
     const changedShot = next.shot !== latest?.shot;
     const cut = !latest || (cinematicShot && changedShot) || (changedMode && previousPhase === "run" && (mode === "rear" || mode === "bumper" || previousMode === "rear" || previousMode === "bumper"));
     let view = next;
+    const step = clamp(Number.isFinite(dt) ? dt : 1 / 60, 0, .1);
 
-    if (!cut && phase === "run" && (previousPhase === "run" || previousPhase === "grid") && latest) {
-      const step = clamp(Number.isFinite(dt) ? dt : 1 / 60, 0, .1);
-      const alpha = 1 - Math.exp(-step * (reducedMotion ? 15 : 8.5));
+    // Spring follow: eye, target, fov and roll chase the rigid shot with a
+    // visible lag and a small settle overshoot — a drone following the kart,
+    // not a camera bolted behind it. A big teleport (or a cut) snaps instead.
+    if (phase === "run" && !reducedMotion) {
       const adapt = ["rear", "bumper"].includes(mode) ? 1 : .9;
       const offset = previousPose && Math.hypot(pose.x - previousPose.x, pose.y - previousPose.y, pose.z - previousPose.z) < 13
         ? { x: (pose.x - previousPose.x) * adapt, y: (pose.y - previousPose.y) * adapt, z: (pose.z - previousPose.z) * adapt }
         : null;
-
-      if (!offset) {
+      const seed = target => ({ ex: target.x, ey: target.y, ez: target.z, tx: target.tx, ty: target.ty, tz: target.tz,
+        fov: target.fov, roll: target.roll || 0, vx: 0, vy: 0, vz: 0, vtx: 0, vty: 0, vtz: 0, vfov: 0, vroll: 0 });
+      if (cut || !spring || !offset) {
+        // Hard cut, first frame, or a teleport: no lag, the camera is exactly
+        // on the rigid shot (this is what keeps the kart framed on big jumps).
+        spring = seed(next);
         view = next;
       } else {
-        const ext = {
-          ...latest,
-          x: latest.x + offset.x, y: latest.y + offset.y, z: latest.z + offset.z,
-          tx: latest.tx + offset.x, ty: latest.ty + offset.y, tz: latest.tz + offset.z,
-        };
-        view = blend(ext, next, alpha, next.shot);
-        view.fov = mix(latest.fov, next.fov, 1 - Math.exp(-step * 5.5));
+        // Feed the kart's own movement forward so the spring only lags the
+        // shape changes (curves, speed changes), never the translation.
+        spring.ex += offset.x; spring.ey += offset.y; spring.ez += offset.z;
+        spring.tx += offset.x; spring.ty += offset.y; spring.tz += offset.z;
+        const omega = 5.2, zeta = .72;
+        const k = omega * omega, c = 2 * zeta * omega;
+        const target = [next.x, next.y, next.z, next.tx, next.ty, next.tz, next.fov, next.roll || 0];
+        const pos = ["ex", "ey", "ez", "tx", "ty", "tz", "fov", "roll"];
+        const vel = ["vx", "vy", "vz", "vtx", "vty", "vtz", "vfov", "vroll"];
+        for (let i = 0; i < 8; i++) {
+          spring[vel[i]] += (-k * (spring[pos[i]] - target[i]) - c * spring[vel[i]]) * step;
+          spring[pos[i]] += spring[vel[i]] * step;
+        }
+        view = { ...next, x: spring.ex, y: spring.ey, z: spring.ez, tx: spring.tx, ty: spring.ty, tz: spring.tz, fov: spring.fov, roll: spring.roll };
       }
     }
 
-    if (phase === "run" && aspect < .74 && ["chase", "wide"].includes(mode)) {
+    // Event impulses decay every frame, whether or not they are applied.
+    for (const key of ["pull", "fov", "push", "pan", "sweep"]) {
+      impulses[key] *= Math.exp(-step * (key === "push" ? 2.4 : key === "fov" ? 1.8 : key === "pull" ? 1.5 : key === "pan" ? 1.6 : 1.3));
+    }
+    if (phase === "run" && !reducedMotion) {
+      swayTime += step;
+      const basis = viewFor(view, aspect, .1, 400);
+      // Turbo: pull back + FOV punch. Hit: quick push-in.
+      const along = impulses.pull - impulses.push;
+      view.x -= basis.forward[0] * along; view.y -= basis.forward[1] * along; view.z -= basis.forward[2] * along;
+      view.fov = clamp(view.fov + impulses.fov, 42, 82);
+      // Power: brief pan forward toward the effect. Overtake: lateral sweep.
+      const yaw = pose.yaw || 0;
+      view.tx += Math.sin(yaw) * impulses.pan;
+      view.tz += Math.cos(yaw) * impulses.pan;
+      view.x += basis.right[0] * impulses.sweep; view.z += basis.right[2] * impulses.sweep;
+      // Drift: lean into the curve while the kart is sliding.
+      if (player?.drift) {
+        const sign = player.driftSign || Math.sign(pose.steer || 0) || 1;
+        view.roll = (view.roll || 0) + sign * .028;
+        view.tx -= basis.right[0] * sign * .3; view.tz -= basis.right[2] * sign * .3;
+      }
+      // Constant subtle sway so the camera never feels frozen.
+      view.x += basis.right[0] * Math.sin(swayTime * .5) * .05;
+      view.y += Math.sin(swayTime * .83 + 1.3) * .035;
+      view.z += basis.right[2] * Math.sin(swayTime * .5) * .05;
+      view.roll = (view.roll || 0) + Math.sin(swayTime * .4) * .0035;
+      // The road ahead and the kart stay visible: keep the eye above the road.
+      view.y = Math.max(view.y, cameraFloor(course, player.s, view));
+    }
+    // Countdown: a slow orbit around the kart while the lights count down.
+    // The first grid frame is exactly the rigid launch camera (the intro
+    // handoff must not jump); the orbit starts from the second frame on.
+    if (phase === "grid" && !reducedMotion) {
+      if (previousPhase !== "grid") gridOrbit = 0;
+      else {
+        gridOrbit += step * .22;
+        const dx = view.x - pose.x, dz = view.z - pose.z;
+        const cos = Math.cos(gridOrbit), sin = Math.sin(gridOrbit);
+        view.x = pose.x + dx * cos - dz * sin;
+        view.z = pose.z + dx * sin + dz * cos;
+        view.y = Math.max(view.y, cameraFloor(course, player.s, view));
+      }
+    }
+
+    if (view.shot === "lobby" || view.shot === "hero") {
+      view = frameShowpiece(view, pose, aspect);
+    } else if (phase === "run" && aspect < .74 && ["chase", "wide"].includes(mode)) {
       view = protectDriver(view, pose, aspect);
     }
     latest = view;
@@ -246,5 +357,5 @@ export function createDirector() {
     return { ...view, trackDistance: view.trackDistance ?? player.s, cut };
   }
 
-  return { reset, get };
+  return { reset, get, pulse };
 }

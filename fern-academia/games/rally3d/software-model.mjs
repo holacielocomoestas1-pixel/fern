@@ -37,12 +37,14 @@ function catalogPart(part) {
   };
 }
 
-function cameraPose(vehicle,camera) {
+function cameraPose(vehicle,camera,close) {
   const dx=camera.x-vehicle.x, dy=camera.y-vehicle.y, dz=camera.z-vehicle.z;
   const distance=Math.hypot(dx,dy,dz);
   const angle=(Math.atan2(dx,dz)-(vehicle.yaw||0))/TAU;
-  const az=((Math.round(angle*AZIMUTH)%AZIMUTH)+AZIMUTH)%AZIMUTH;
-  const el=Math.round(clamp(Math.atan2(dy,Math.hypot(dx,dz)),-.3,1.26)/ELEVATION_STEP);
+  const slot=close ? 1 : vehicle.id===0 ? 2 : 3;
+  const az=((Math.round(angle*AZIMUTH/slot)*slot%AZIMUTH)+AZIMUTH)%AZIMUTH;
+  const step=close?1:2;
+  const el=Math.round(clamp(Math.atan2(dy,Math.hypot(dx,dz)),-.3,1.26)/(ELEVATION_STEP*step))*step;
   const range=DEPTHS.findIndex((depth,i)=>i===DEPTHS.length-1||distance<=Math.sqrt(depth*DEPTHS[i+1]));
   return {az,el,range,distance};
 }
@@ -55,13 +57,17 @@ function lighting(env,az,el) {
   const light=[sun[0]*.64-.39,Math.max(.30,sun[1]),sun[2]*.57-.34];
   const length=Math.hypot(...light)||1;
   for(let i=0;i<light.length;i++)light[i]/=length;
+  const forward=[si*flat,lift,co*flat];
+  const half=light.map((component,i)=>component+forward[i]);
+  const len=Math.hypot(...half)||1;
   return {
-    light,
-    forward:[si*flat,lift,co*flat],
+    light,forward,half:half.map(n=>n/len),
     right:[-co,0,si],
     up:[-si*lift,flat,-co*lift],
     direct:env?.sun||[1,.90,.77],
-    ambient:env?.ambient??.78,
+    sky:env?.skyBottom||[.82,.88,.78],
+    ambient:env?.ambient??.78, wet:env?.wetness||0,
+    exposure:env?.exposure||1,
   };
 }
 
@@ -79,13 +85,14 @@ function textureContext(canvas,size) {
 
 function rasterize(target,part,matrix,view,depth,size) {
   const {vertices,triangles,projected,surface,emissive}=part;
-  const {forward,right,up,light,direct,ambient}=view;
+  const {forward,right,up,light,half,direct,sky,ambient,wet,exposure}=view;
   const factor=size/TILE_METRES;
   const cx=size*.5,cy=size*ANCHOR_Y;
   const [lightR,lightG,lightB]=direct;
-  const finish=surface==="paint" || surface==="metal" ? 1 : surface==="cloth"||surface==="fur" ? .29 : .45;
-  const paint=surface==="paint"?1:0;
-  const nap=surface==="fur"||surface==="cloth";
+  const paint=surface==="paint", metal=surface==="metal";
+  const nap=surface==="fur"||surface==="cloth", rubber=surface==="rubber";
+  const gain=metal?.87:paint?.58:rubber?.12:nap?.10:.27;
+  const hardness=metal?27:paint?24:nap?9:15;
   for(let i=0,j=0;i<vertices.length;i+=9,j+=6) {
     const x=vertices[i], y=vertices[i+1], z=vertices[i+2];
     const px=matrix[12]+x*matrix[0]+y*matrix[4]+z*matrix[8];
@@ -103,16 +110,20 @@ function rasterize(target,part,matrix,view,depth,size) {
     const nl=Math.max(0,dot(dx,dy,dz,light));
     const nv=Math.max(0,dot(dx,dy,dz,forward));
     const upLit=clamp(dy*.5+.5,0,1);
-    const half=nl*.55+nv*.45;
-    const spec=finish*(half**(paint?14:19))*.33;
-    const rim=(1-nv)**3 * (.052+upLit*.075);
-    const fibres=nap ? .97+.031*Math.sin(px*278+py*356+pz*537) : 1;
-    const occlusion=.84+.16*clamp(py*1.1+.16,0,1);
-    const bounce=(ambient*.64+upLit*.25+emissive*.5)*occlusion;
-    const chroma=clamp(nl*.52+.057,0,.62);
-    projected[j+3]=channel((vertices[i+6]*(bounce+chroma*lightR)*fibres)+(spec+rim*.75)*lightR);
-    projected[j+4]=channel((vertices[i+7]*(bounce+chroma*lightG)*fibres)+(spec+rim*.9)*lightG);
-    projected[j+5]=channel((vertices[i+8]*(bounce+chroma*lightB)*fibres)+(spec+rim)*lightB);
+    const spec=Math.max(0,dot(dx,dy,dz,half))**hardness*gain*(1+wet*.12);
+    const fresnel=(1-nv)**3.45;
+    const reflectedY=2*nv*dy-forward[1];
+    const horizon=1-clamp(Math.abs(reflectedY-.10)*2.8,0,1);
+    const rim=fresnel*(.051+upLit*.071);
+    const clearcoat=(paint||metal) ? (fresnel*.43 + upLit*.083 + horizon*horizon*.092)*(paint?.85:1.13) : nap ? rim*.33 : rim*.44;
+    const fibres=nap ? .96+.046*Math.sin(px*278+py*356+pz*537) : 1;
+    const occlusion=.67+.33*clamp(py*1.4+.14,0,1);
+    const bounce=(ambient*.49+upLit*.24+emissive*.63)*occlusion;
+    const chroma=clamp(nl*(nap?.63:.54)+.042,0,.71);
+    const glow=(emissive**1.3)*.22;
+    projected[j+3]=channel(exposure*((vertices[i+6]*(bounce+chroma*lightR)*fibres)+(spec+rim*.96+glow)*lightR+clearcoat*sky[0]));
+    projected[j+4]=channel(exposure*((vertices[i+7]*(bounce+chroma*lightG)*fibres)+(spec+rim*.87+glow)*lightG+clearcoat*sky[1]));
+    projected[j+5]=channel(exposure*((vertices[i+8]*(bounce+chroma*lightB)*fibres)+(spec+rim*.78+glow)*lightB+clearcoat*sky[2]));
   }
   const {zBuffer,pixels}=target;
   const doubleSided = surface==="cloth";
@@ -178,14 +189,14 @@ function overlayPower(ctx,car,scale,time,reduced) {
 
 export function createSoftwareModels(canvas) {
   const cache=new Map();
-  let parts=[],lightStamp="",generated=0,updates=0;
+  let parts=[],lightStamp="",generated=0,updates=0,quality="auto";
   const bodyMatrix=new Float32Array(16), wheelMatrix=new Float32Array(16);
   const buffers=new Map(DETAIL_SIZE.map(size=>[size,new Float32Array(size*size)]));
 
   function setVehicles(models) {
     parts=(models||[]).map(data=>({
       body:data.body.map(part=>catalogPart(part)).filter(Boolean),
-      wheel:catalogPart(data.wheel), wheelOffsets:data.wheelOffsets,
+      wheel:catalogPart(data.wheel), wheelMetal:catalogPart(data.wheelMetal), wheelOffsets:data.wheelOffsets,
     }));
     cache.clear();
   }
@@ -205,6 +216,7 @@ export function createSoftwareModels(canvas) {
       for(const offset of model.wheelOffsets) {
         wheelTransform(wheelMatrix,bodyMatrix,offset,offset[2]>0?turn*.21:0,spin);
         rasterize(targetBuffer,model.wheel,wheelMatrix,view,distance,size);
+        if(model.wheelMetal)rasterize(targetBuffer,model.wheelMetal,wheelMatrix,view,distance,size);
       }
     }
     context.putImageData(image,0,0);
@@ -213,7 +225,7 @@ export function createSoftwareModels(canvas) {
   }
 
   function setWorld(environment) {
-    const stamp=[...(environment?.sunDirection||[]),...(environment?.sun||[]),environment?.ambient].join(",");
+    const stamp=[...(environment?.sunDirection||[]),...(environment?.sun||[]),...(environment?.skyBottom||[]),environment?.ambient,environment?.wetness,environment?.exposure].join(",");
     if(stamp!==lightStamp){cache.clear();lightStamp=stamp;}
   }
 
@@ -241,15 +253,16 @@ export function createSoftwareModels(canvas) {
     return value;
   }
 
-  function draw(ctx,vehicle,camera,scale,environment,time,reduced) {
+  function draw(ctx,vehicle,camera,scale,environment,time,reduced,reflect=0) {
     const id=(vehicle.model??vehicle.id)%parts.length;
     const model=parts[id]||parts[0];
     if(!model)return false;
-    const pose=cameraPose(vehicle,camera);
-    const view=lighting(environment,pose.az,pose.el);
     const portrait=vehicle.id===0&&!vehicle.ghost;
-    const tier=portrait&&camera.shot==="lobby"?0:portrait&&(camera.shot==="hero"||scale>=83)?1:scale>=31?2:scale>=13?3:4;
-    const turn=portrait&&tier<=2?Math.round(clamp(vehicle.steer||0,-1,1)*2):0;
+    const close=camera.shot==="lobby"||camera.shot==="hero"||camera.shot==="finish-orbit";
+    const pose=cameraPose(vehicle,camera,portrait&&close);
+    const tier=portrait&&camera.shot==="lobby"&&quality!=="low"?0:
+      portrait&&(close||scale>=83)&&quality!=="low"?1:scale>=31?2:scale>=13?3:4;
+    const turn=portrait&&tier<=2?Math.round(clamp(vehicle.steer||0,-1,1)*(close?2:1)):0;
     // Most steering moves remain in one angular slot. Close slow cinematics
     // can also show a distinct wheel position without taxing the race loop.
     const rotation=pose.distance<5.3 && !reduced ? 1.1 : .19;
@@ -261,11 +274,19 @@ export function createSoftwareModels(canvas) {
       if(nearby)selected=remember(nearby.key,nearby.view);
       else {
         const size=updates>=BUDGET&&tier>1 ? DETAIL_SIZE.at(-1) : DETAIL_SIZE[tier];
+        const view=lighting(environment,pose.az,pose.el);
         const image=createView(model,pose,view,turn,rotation,size);
         if(!image)return false;
         updates++;
         selected=remember(key,{image,id,tier,turn,pose});
       }
+    }
+    if(reflect>0 && quality!=="low") {
+      ctx.save();
+      ctx.globalAlpha*=reflect*(close?.27:.15);
+      ctx.scale(.93, close?-.44:-.32);
+      stretchFade(ctx,selected.image,Math.min(scale,200));
+      ctx.restore();
     }
     stretchFade(ctx,selected.image,Math.min(scale,200));
     overlayPower(ctx,vehicle,scale,time,reduced);
@@ -274,6 +295,7 @@ export function createSoftwareModels(canvas) {
 
   return {
     setVehicles,setWorld,draw,
+    setQuality(value){quality=value;},
     beginFrame(){updates=0;},
     dispose(){cache.clear();parts=[];},
     get generated(){return generated;},
